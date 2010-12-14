@@ -1,0 +1,8 @@
+# Tag things that are linked with external libraries
+<*.{native}>: use_sdl, use_sdlloader, use_lablgl, use_labltk, use_togl, use_unix, use_bigarray, use_str
+<*.{byte}>: use_sdl, use_sdlloader, use_lablgl, use_labltk, use_togl, use_unix, use_bigarray, use_str
+
+# Tag also sources that use these libraries.
+# This will add -I +sdl.
+# You can specify something more precise than **/*.ml
+<**/*.ml>: use_sdl, use_sdlloader, use_lablgl, use_labltk
