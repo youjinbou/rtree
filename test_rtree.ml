@@ -102,8 +102,6 @@ struct
 
 end
 
-let usleep () = ignore (Unix.select [] [] [] 0.01 )
-
 (* ---------------------------------------------------------------------------------*)
 
 open View_volume
@@ -382,20 +380,35 @@ object (self)
 
   method motion x y = motion_handler x y 
 
-  method event_loop =
-    self#display;
-    pos <- FVec3.add pos (FVec3.scale vdir.(0) speed.(0));
-    pos <- FVec3.add pos (FVec3.scale vdir.(1) speed.(1));
-    pos <- FVec3.add pos (FVec3.scale vdir.(2) speed.(2));
+  method check_events () =
+    let rec check_events () =
     match poll () with
-	None   -> usleep ()
-      | Some e -> match e with 
-	    KEYDOWN           k 
-	  | KEYUP             k -> self#keyboard ~state:k.ke_state ~key:k.keysym
-	  | MOUSEBUTTONDOWN   m
-	  | MOUSEBUTTONUP     m -> self#mouse ~btn:m.mbe_button ~state:m.mbe_state ~xmcoord:m.mbe_x ~ymcoord:m.mbe_y
-	  | MOUSEMOTION       m -> self#motion m.mme_x m.mme_y
-	  | _                   -> prerr_string "unhandled event";prerr_newline ()
+	None   -> ()
+      | Some e -> ( 
+	  match e with 
+	      KEYDOWN           k 
+	    | KEYUP             k -> self#keyboard ~state:k.ke_state ~key:k.keysym
+	    | MOUSEBUTTONDOWN   m
+	    | MOUSEBUTTONUP     m -> self#mouse ~btn:m.mbe_button ~state:m.mbe_state ~xmcoord:m.mbe_x ~ymcoord:m.mbe_y
+	    | MOUSEMOTION       m -> self#motion m.mme_x m.mme_y
+	    | _                   -> prerr_string "unhandled event";prerr_newline ()
+	); check_events ()
+    in
+      check_events ()
+
+  method event_loop () =
+    let timeframe = 0.01 in
+    let usleep t = ignore (Unix.select [] [] [] t )
+    in
+
+    let t = Unix.gettimeofday () in
+      self#display;
+      pos <- FVec3.add pos (FVec3.scale vdir.(0) speed.(0));
+      pos <- FVec3.add pos (FVec3.scale vdir.(1) speed.(1));
+      pos <- FVec3.add pos (FVec3.scale vdir.(2) speed.(2));
+      self#check_events ();
+      let t = (Unix.gettimeofday ()) -. t -. timeframe
+      in if t > 0.0 then usleep t else ()
 
 
   method set_keyboard f = keyboard_handler <- f
@@ -460,7 +473,7 @@ let main () =
       in
 	view#reshape;
 	while true do
-	  view#event_loop 
+	  view#event_loop ()
 	done
   end
 
