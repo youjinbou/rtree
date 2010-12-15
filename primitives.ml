@@ -14,7 +14,6 @@ struct
   let  modulo x m = if x <= (-. m) then x +. m else if x > m then x -. m else x
   let  pi = acos(0.0) *. 2.0
   let  epsilon = epsilon_float
-  let  sqrt    = sqrt
   let  acos    = acos
   let  asin    = asin
   let  cos     = cos
@@ -22,6 +21,8 @@ struct
   let  power   = ( ** )
   let  abs     = abs_float
   let compare a b = let c = a -. b in if c < 0.0 then (-1) else if c > 0.0 then 1 else 0
+  let  sqrt    = sqrt
+  let  to_string = string_of_float
 end
 
 module Int   =
@@ -38,5 +39,7 @@ struct
   let  modulo  = ( mod )
   let  epsilon = 0
   let  abs   = abs
-  let compare a b = a - b
+  let  compare a b = a - b
+  let  sqrt v  = int_of_float (sqrt ((float) v))
+  let to_string = string_of_int
 end

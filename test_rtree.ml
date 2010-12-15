@@ -1,63 +1,78 @@
-open Sdl;;
-open Sdlvideo;;
-open Sdlevent;;
-open Sdlkey;;
-open Sdlmouse;;
-open Sdlgl;;
-open Sdlwm;;
-open GlPix;;
+open Sdl
+open Sdlvideo
+open Sdlevent
+open Sdlkey
+open Sdlmouse
+open Sdlgl
+open Sdlwm
+open GlPix
 
+open Common
 
-open Primitives
-open Vec3
-
-module FVec3  = Vec3.Make(Float)
-
-open Debug
+(* always useful *)
+let pi = acos (-.1.)
 
 class box3d =
   let i = ref 0 in
     fun b t ->
 object(self)
 
+  inherit Rbox3d.t b t as super
+
   val id = let id = !i in incr i; id
 
-  val gl_id = 
-    let xb, yb, zb = FVec3.to_tuple b
-    and xt, yt, zt = FVec3.to_tuple t
-    and l       = GlList.create `compile 
+  method draw () =
+    let xb, yb, zb = FVec3.to_tuple self#bottom
+    and xt, yt, zt = FVec3.to_tuple self#top
+    in
+      GlDraw.begins `quad_strip;
+      GlDraw.vertex ~x:xt ~y:yt ~z:zb ();
+      GlDraw.vertex ~x:xt ~y:yb ~z:zb ();
+      GlDraw.vertex ~x:xb ~y:yt ~z:zb ();
+      GlDraw.vertex ~x:xb ~y:yb ~z:zb ();
+      GlDraw.vertex ~x:xb ~y:yt ~z:zt ();
+      GlDraw.vertex ~x:xb ~y:yb ~z:zt ();
+      GlDraw.vertex ~x:xt ~y:yt ~z:zt ();
+      GlDraw.vertex ~x:xt ~y:yb ~z:zt ();
+      GlDraw.ends ();
+      GlDraw.begins `quad_strip;
+      GlDraw.vertex ~x:xb ~y:yt ~z:zb ();
+      GlDraw.vertex ~x:xb ~y:yt ~z:zt ();
+      GlDraw.vertex ~x:xt ~y:yt ~z:zb ();
+      GlDraw.vertex ~x:xt ~y:yt ~z:zt ();
+      GlDraw.vertex ~x:xt ~y:yb ~z:zb ();
+      GlDraw.vertex ~x:xt ~y:yb ~z:zt ();
+      GlDraw.vertex ~x:xb ~y:yb ~z:zb ();
+      GlDraw.vertex ~x:xb ~y:yb ~z:zt ();
+      GlDraw.ends ()
+	
+end  
+
+class box3d_gllist b t =
+object(self)
+
+  inherit box3d b t as super
+
+  val mutable gl_id = Obj.magic 0
+
+  method private init_id =
+    let l = GlList.create `compile 
     in
       GlList.begins l ~mode:`compile;
-      GlDraw.begins `quad_strip;
-      GlDraw.vertex ~x:xt ~y:yt ~z:zb ();
-      GlDraw.vertex ~x:xt ~y:yb ~z:zb ();
-      GlDraw.vertex ~x:xb ~y:yt ~z:zb ();
-      GlDraw.vertex ~x:xb ~y:yb ~z:zb ();
-      GlDraw.vertex ~x:xb ~y:yt ~z:zt ();
-      GlDraw.vertex ~x:xb ~y:yb ~z:zt ();
-      GlDraw.vertex ~x:xt ~y:yt ~z:zt ();
-      GlDraw.vertex ~x:xt ~y:yb ~z:zt ();
-      GlDraw.ends ();
-      GlDraw.begins `quad_strip;
-      GlDraw.vertex ~x:xb ~y:yt ~z:zb ();
-      GlDraw.vertex ~x:xb ~y:yt ~z:zt ();
-      GlDraw.vertex ~x:xt ~y:yt ~z:zb ();
-      GlDraw.vertex ~x:xt ~y:yt ~z:zt ();
-      GlDraw.vertex ~x:xt ~y:yb ~z:zb ();
-      GlDraw.vertex ~x:xt ~y:yb ~z:zt ();
-      GlDraw.vertex ~x:xb ~y:yb ~z:zb ();
-      GlDraw.vertex ~x:xb ~y:yb ~z:zt ();
-      GlDraw.ends ();
+      super#draw ();
       GlList.ends ();
-      l
+      gl_id <- l
 
   method draw () =
     GlList.call gl_id
       
+  initializer (
+    self#init_id
+  )
+
 end
 
 open Rtree 
-
 module Rtree3Def =
 struct 
   let minimum = 2
@@ -65,6 +80,7 @@ struct
   type t = box3d
 end
 
+module Rtree3 = Rtree.Make(FVec3)(Rtree3Def)
 
 module Glv =
 struct
@@ -86,9 +102,11 @@ struct
 
 end
 
-module Rtree3 = Rtree.Make(FVec3)(Rtree3Def)
-
 let usleep () = ignore (Unix.select [] [] [] 0.01 )
+
+(* ---------------------------------------------------------------------------------*)
+
+open View_volume
     
 class view screen = 
 object (self)
@@ -97,23 +115,33 @@ object (self)
   val height = 600
 
   val rtree = 
+    let fname = "rtree" 
+    and fdir  = "dots" in 
     let range = 100.0 in
     let maxv = [| range ; range ; range |] in
     let origb = [| -1.0; -1.0 ; -1.0 |]
     and origt = [| 1.0 ; 1.0 ; 1.0 |] in
-    let r = Rtree3.make (new Rtree3.Rbox.t origb origt) (new box3d origb origt)
+    let r = Rtree3.make (new Rtree3.Rbox.t origb origt) (new box3d_gllist origb origt)
     in
-    let rec addup i =
-      if i = 0 
-      then r
-      else 
+    let rec addup i m =
+      (*      Rtree3.dump r (fname^"_"^(Printf.sprintf "%03d" i)) fdir; *)
+      if i < m 
+      then 
+	(*
 	let b = (FVec3.random maxv)
 	and t = (FVec3.random maxv)
+	*)
+	let b = FVec3.of_tuple ((float)(i / 100), (float)(i / 10), (float)(i mod 10))
 	in
-	  Rtree3.insert r (new Rtree3.Rbox.t b t) (new box3d b t);
-	  addup (pred i)
+	let t = FVec3.map (fun x -> x +. 1.0) b 
+	in
+	  Rtree3.insert r (new Rtree3.Rbox.t b t) (new box3d_gllist b t);
+	  addup (succ i) m
+      else ()
     in
-      addup 100
+      addup 0 15;
+      Rtree3.dump r fname fdir;
+      r
 
   val mutable frustum_min = [| 0. ; 0. ; 0. |]
   val mutable frustum_max = [| 0. ; 0. ; 0. |]
@@ -125,6 +153,12 @@ object (self)
   val mutable speed       = [| 0. ;  0. ; 0. |]
 
   val mutable texpos      = [| 0. ; 0.  ; 0. |]
+
+  val front = FVec3.of_tuple (0.0,0.0,1.0)
+  val up    = FVec3.of_tuple (0.0,1.0,0.0)
+  val right = FVec3.of_tuple (1.0,0.0,0.0)
+
+  val mutable vdir = Array.make 3 (FVec3.null ())
 
   val mutable keyboard_handler = fun a b -> ()
   val mutable mouse_handler    = fun a b c d -> ()
@@ -139,6 +173,7 @@ object (self)
   val mutable lists = []
 
   val grid = 
+    let grid_step = 10 in
     let l = GlList.create `compile 
     in
       GlList.begins l ~mode:`compile;
@@ -155,9 +190,9 @@ object (self)
       for j=(0-20) to 20 do 
 	GlDraw.begins `quad_strip;
 	for i=(0-20) to 20 do
-	  let fi = float_of_int (i*10) in
-	    GlDraw.vertex ~x:(fi) ~z:(float_of_int (j*10))      ~y:(0.) ();
-	    GlDraw.vertex ~x:(fi) ~z:(float_of_int ((j+1)*10))  ~y:(0.) ()
+	  let fi = float_of_int (i*grid_step) in
+	    GlDraw.vertex ~x:(fi) ~z:(float_of_int (j*grid_step))      ~y:(0.) ();
+	    GlDraw.vertex ~x:(fi) ~z:(float_of_int ((j+1)*grid_step))  ~y:(0.) ()
 	done;
 	GlDraw.ends ()
       done;
@@ -176,21 +211,54 @@ object (self)
   method draw_grid =
     GlList.call grid;
 
-  val pi = acos (-.1.)
 
-  method draw_box b =
+  method draw_node k =
+    GlDraw.color (0.0,1.0,0.0);
+    Gl.disable (`cull_face);
+    (new box3d k#bottom k#top)#draw ();
+    Gl.enable (`cull_face);
+
+  method draw_box k b =
+    GlDraw.color (0.0,0.0,1.0);
     b#draw ()
 
+  val mutable visible = []
+
+  val mutable auto_visible = 0
+
+  val mutable full_draw = false
+
   method draw_tree =
-    GlDraw.color (0.0,0.0,1.0);
-    Rtree3.iter rtree self#draw_box 
+    if full_draw 
+    then (
+      Rtree3.iter rtree self#draw_node self#draw_box
+    )
+    else (
+      if auto_visible > 0
+      then (
+	prerr_string "-------------------------\n";
+	let vv = new view_volume () 
+	in
+	  visible <- Rtree3.hit rtree vv;
+      );
+      let dummy = new Rtree3.Rbox.t (FVec3.null ()) (FVec3.null ()) in
+      List.iter (self#draw_box dummy ) visible
+    )
+
+  method update_vdir () =
+    let mat = GlMat.to_array (GlMat.get_matrix `modelview_matrix)
+    in
+      vdir.(0) <- FVec3.of_tuple (mat.(0).(0), mat.(1).(0), mat.(2).(0));
+      vdir.(1) <- FVec3.of_tuple (mat.(0).(1), mat.(1).(1), mat.(2).(1));
+      vdir.(2) <- FVec3.of_tuple (mat.(0).(2), mat.(1).(2), mat.(2).(2))
 
   method view_setup =
-    GlMat.scale ~x:view_scale ~y:view_scale ~z:view_scale ();
     GlMat.rotate ~angle:view_rot.(0) ~x:1.0 ();
     GlMat.rotate ~angle:view_rot.(1) ~y:1.0 ();
     GlMat.rotate ~angle:view_rot.(2) ~z:1.0 ();
+    self#update_vdir ();
     GlMat.translate ~x:pos.(0) ~y:pos.(1) ~z:pos.(2) ();
+    GlMat.scale ~x:view_scale ~y:view_scale ~z:view_scale ()
 
   (* draw the whole thing *)
   method draw =
@@ -242,6 +310,7 @@ object (self)
     GlClear.clear [`color;`depth]
 
   method motion_rot ~xmcoord ~ymcoord =
+    auto_visible <- succ auto_visible;
     self#rotx ((float ymcoord) -. (float old_ymcoord)); old_ymcoord <- ymcoord;
     self#roty ((float xmcoord) -. (float old_xmcoord)); old_xmcoord <- xmcoord
 
@@ -254,7 +323,7 @@ object (self)
     frustum_max.(2) <- frustum_max.(2) +. a 
 
   method motion_off =
-    ()
+    auto_visible <- pred auto_visible
     
   method mouse ~btn ~state ~xmcoord ~ymcoord =
     match state with 
@@ -277,15 +346,23 @@ object (self)
 
   method keyboard ~key ~state =
     let speed_fact = 0.1 in
+    let move k fact =
+      auto_visible <- succ auto_visible;
+      speed.(k) <- speed.(k) +. fact
+    and stop k fact =
+      auto_visible <- pred auto_visible;
+      speed.(k) <- speed.(k) -. fact
+    in
     match state with 
 	RELEASED -> (
 	  match key with
-	    | KEY_f       -> speed.(0) <-  speed.(0) +. speed_fact 
-	    | KEY_s       -> speed.(0) <-  speed.(0) -. speed_fact 
-	    | KEY_e       -> speed.(2) <-  speed.(2) -. speed_fact 
-	    | KEY_d       -> speed.(2) <-  speed.(2) +. speed_fact 
-	    | KEY_t       -> speed.(1) <-  speed.(1) +. speed_fact 
-	    | KEY_g       -> speed.(1) <-  speed.(1) -. speed_fact 
+	    | KEY_f       -> stop 0 (-.speed_fact)
+	    | KEY_s       -> stop 0 speed_fact
+	    | KEY_e       -> stop 2 speed_fact
+	    | KEY_d       -> stop 2 (-.speed_fact)
+	    | KEY_t       -> stop 1 (-.speed_fact)
+	    | KEY_g       -> stop 1 speed_fact
+	    | KEY_q       -> full_draw <- false
 	    | _           -> ()
 	)
       | PRESSED ->
@@ -293,12 +370,13 @@ object (self)
 	      KEY_UNKNOWN -> ()
 	    | KEY_ESCAPE  -> Sdl.quit ();exit 0
 	    | KEY_r       -> self#reshape;
-	    | KEY_f       -> speed.(0) <-  speed.(0) -. speed_fact 
-	    | KEY_s       -> speed.(0) <-  speed.(0) +. speed_fact 
-	    | KEY_e       -> speed.(2) <-  speed.(2) +. speed_fact 
-	    | KEY_d       -> speed.(2) <-  speed.(2) -. speed_fact 
-	    | KEY_t       -> speed.(1) <-  speed.(1) -. speed_fact 
-	    | KEY_g       -> speed.(1) <-  speed.(1) +. speed_fact 
+	    | KEY_f       -> move 0 (-.speed_fact)
+	    | KEY_s       -> move 0 speed_fact
+	    | KEY_e       -> move 2 speed_fact
+	    | KEY_d       -> move 2 (-.speed_fact)
+	    | KEY_t       -> move 1 (-.speed_fact)
+	    | KEY_g       -> move 1 speed_fact
+	    | KEY_q       -> full_draw <- true
 	    | KEY_SPACE   -> Debug.fvec "pos: " pos; Debug.fvec "rot: " view_rot;  Debug.fvec "frustum_min : " frustum_min; Debug.fvec "frustum_max : " frustum_max ; Debug.float "scale :" view_scale
 	    | _           -> ()
 
@@ -306,9 +384,9 @@ object (self)
 
   method event_loop =
     self#display;
-    pos.(0) <- speed.(0) +. pos.(0);
-    pos.(1) <- speed.(1) +. pos.(1);
-    pos.(2) <- speed.(2) +. pos.(2);
+    pos <- FVec3.add pos (FVec3.scale vdir.(0) speed.(0));
+    pos <- FVec3.add pos (FVec3.scale vdir.(1) speed.(1));
+    pos <- FVec3.add pos (FVec3.scale vdir.(2) speed.(2));
     match poll () with
 	None   -> usleep ()
       | Some e -> match e with 

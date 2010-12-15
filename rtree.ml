@@ -1,50 +1,7 @@
 open Debug
 
 (*345678911234567892123456789312345678941234567895123456789612345678971234567898*)
-module type VEC =
-sig
-
-  module type SCALAR =
-  sig
-    type t
-    val  zero   : t
-    val  one    : t
-    val  add    : t -> t -> t
-    val  sub    : t -> t -> t
-    val  mul    : t -> t -> t
-    val  div    : t -> t -> t
-    val  opp    : t -> t
-    val  rand   : t -> t
-    val  modulo : t -> t -> t
-    val  epsilon: t
-    val  abs    : t -> t
-  end
-
-  module Scalar : SCALAR
-
-  type t
-
-  val size : int
-    
-  val null : unit -> t
-  val one  : unit -> t
-
-  val get     : t -> int -> Scalar.t
-  val add     : t -> t -> t
-  val sub     : t -> t -> t
-  val scale   : t -> Scalar.t -> t
-  val dot     : t -> t -> Scalar.t
-  val copy    : t -> t -> unit
-  val random  : t -> t
-  val modulo  : t -> Scalar.t -> t
-  val below_epsilon : t -> bool
-  val for_all    : (Scalar.t -> bool) -> t -> bool
-  val map        : (Scalar.t -> Scalar.t) -> t -> t
-  val map2       : (Scalar.t -> Scalar.t -> Scalar.t) -> t -> t -> t
-  val fold_left  : ('a -> Scalar.t -> 'a) -> 'a -> t -> 'a
-  val fold_right : (Scalar.t -> 'a -> 'a) -> t -> 'a -> 'a
-
-end
+open Vec
 
 (* module type for rtree data *)
 module type RTREEDEF =
@@ -120,13 +77,25 @@ struct
 
   (* ------------------------------------------------------------------------------- *)
 
-  let rec find node key =
-    match node with
-	Leaf (k, cl) -> fold_left (fun l (k,b) -> if k#overlaps key then (k,b)::l else l) [] cl
-      | Node (k, nl) -> if k#overlaps key 
-	then fold_left (fun l nn -> append (find nn key) l) [] nl
-	else []
+  let hit t key =
+    let rec hit node key =
+      match node with
+	  Leaf (k, cl) -> fold_left (fun l (k,b) -> if key#overlaps k then b::l else l) [] cl
+	| Node (k, nl) -> if key#overlaps k
+	  then fold_left (fun l nn -> append (hit nn key) l) [] nl
+	  else []
+    in
+      hit t.root key
 
+  let includes t key =
+    let rec includes node key =
+      match node with
+	  Leaf (k, cl) -> fold_left (fun l (k,b) -> if key#includes k then (k,b)::l else l) [] cl
+	| Node (k, nl) -> if key#includes k
+	  then fold_left (fun l nn -> append (includes nn key) l) [] nl
+	  else []
+    in
+      includes t.root key
 
   (* ------------------------------------------------------------------------------- *)
 
@@ -162,47 +131,70 @@ struct
       in 
 	s1, s2
 
-    let rec putnext (l1, r1) (l2, r2) le =
-      (* add e to the list l *)
-      let add l r e =
-	(e::l, r#expand (getkey e))
-      in
-	match le with 
-	    [] -> (l1, r1), (l2, r2)
-	  | _  -> (
-	      (* compute area increases for an entry on both nodes:
-		 returns the entry, which node it should go in and 
-		 the diff of increase *)
-	      let compute_both e r1 r2 = 
-		let (-) = Coord.Scalar.sub in
-		let i1 = area_increase r1 (getkey e)
-		and i2 = area_increase r2 (getkey e)
-		in
-		  if i1 < i2 then (e, 1, i2 - i1) else (e, 2, i1 - i2)
-	      in
-		(* compare acc with challenger, keep winner as new acc
-		   and put loser in remaining list lr *)
-	      let challenge ((e, i, d), lr) c =
-		let (_, ci, cd) = compute_both c r1 r2 in
-		  if cd > d then ((c, ci, cd), e::lr) else ((e, i, d), c::lr)
-	      in
-		(* compute the best entry for next inclusion, and the remaining 
-		   list of entries *)
-	      let ((e, i, _), lr) = 
-		List.fold_left 
-		  challenge 
-		  (compute_both (List.hd le) r1 r2, [])
-		  (List.tl le)
-	      in 
-		if i = 1 
-		then putnext (add l1 r1 e) (l2,r2) lr
-		else putnext (l1,r1) (add l2 r2 e) lr
-	    )
+    let rec fillup l1 (l2, r2) le =
+      match le with
+	  []    -> l1, (l2, r2)
+	| e::le -> fillup l1 (e::l2, r2#expand (getkey e)) le
+
+    (* putnext:
+       pick the least region increasing entry of le and put it in the corresponding
+       list l1 or l2
+       @l1, @l2 the output lists
+       @r1, @r2 the covered regions for the output lists
+       @le the list of remaining entries to be assigned
+       Q: what if all the entries favor one list?
+       A: just check the number of entries in either lists, and when (Def.minimum + 1)
+       is reached for one list, fill up the other list with the rest, see fillup
+    *)
+    let rec putnext (l1, r1, i1) (l2, r2, i2) le =
+      (* check if we reached threshold on either list *)
+      match i1, i2 with
+	  _,v when v > Def.minimum -> fillup (l2, r2) (l1, r1) le
+	| v,_ when v > Def.minimum -> fillup (l1, r1) (l2, r2) le
+	| _                        -> (
+	    (* add e to the list l *)
+	    let add l r e i =
+	      (e::l, r#expand (getkey e), succ i)
+	    in
+	      match le with 
+		  [] -> (l1, r1), (l2, r2)
+		| _  -> (
+		    (* compute area increases for an entry on both nodes:
+		       returns the entry, which node it should go in and 
+		       the diff of increase *)
+		    let compute_both e r1 r2 = 
+		      let (-) = Coord.Scalar.sub in
+		      let i1 = area_increase r1 (getkey e)
+		      and i2 = area_increase r2 (getkey e)
+		      in
+			if i1 <= i2 then (e, 1, i2 - i1) else (e, 2, i1 - i2)
+		    in
+		      (* compare acc with challenger, keep winner as new acc
+			 and put loser in remaining list lr *)
+		    let challenge ((e, i, d), lr) c =
+		      let (_, ci, cd) = compute_both c r1 r2 in
+			if cd > d then ((c, ci, cd), e::lr) else ((e, i, d), c::lr)
+		    in
+		      (* compute the best entry for next inclusion, and the remaining 
+			 list of entries *)
+		    let ((e, i, _), lr) = 
+		      List.fold_left 
+			challenge 
+			(compute_both (List.hd le) r1 r2, [])
+			(List.tl le)
+		    in 
+		      if i = 1 
+		      then putnext (add l1 r1 e i1) (l2,r2,i2) lr
+		      else putnext (l1,r1,i1) (add l2 r2 e i2) lr
+		  )
+	  )
 	      
     let split l =
       let s1, s2 = pickseeds l
       in
-	putnext ([s1], getkey s1) ([s2], getkey s2) l
+      let ll = List.find_all (fun x -> x <> s1 && x <> s2) l
+      in
+	putnext ([s1], getkey s1, 1) ([s2], getkey s2, 1) ll
 
   end
     
@@ -239,7 +231,7 @@ struct
 	Leaf (k, cl) -> (
 	  let c =  (key, value) 
 	  in
-	    if length cl > Def.maximum
+	    if length cl >= Def.maximum
 	    then
 	      let (l1, r1), (l2, r2) = SplitLeaf.split (c::cl)
 	      in
@@ -276,18 +268,79 @@ struct
 
   (* ------------------------------------------------------------------------------- *)
 
-  let iter t f =
-    let rec iter_node n f =
+  let iter t fnode fleaf =
+    let rec iter_node n =
       match n with
-	  Leaf (k, cl) -> List.iter (fun (k, v) -> f v) cl
-	| Node (k, nl) -> iter_list nl f
+	  Leaf (k, cl) -> fnode k; List.iter (fun (k, v) -> fleaf k v) cl
+	| Node (k, nl) -> fnode k; iter_list nl
 
-    and iter_list l f =
+    and iter_list l =
       match l with 
 	  []   -> ()
-	| n::t -> (iter_node n f; iter_list t f)
+	| n::t -> (iter_node n; iter_list t)
 	    
     in
-      iter_node t.root f
+      iter_node t.root
+
+  (* ------------------------------------------------------------------------------- *)
+  (* dumping the tree to dotty format 
+     for each node:
+     dump a record of the node containing the list of the children
+     for each child
+       dump a link between the parent and the child
+       dump the child
+  *)
+	
+  let dump tree filename directory =
+    let file = open_out (directory^"/"^filename^".dot") in
+    let output_str s = output_string file s
+    in
+    let dump_link parent child =
+      output_str (parent^":i"^child^" -> n_"^child^":n;\n")
+    and string_of_key k = 
+      string_of_int (Oo.id k)
+     in
+    let node_label k = 
+      "n_"^(string_of_key k)
+    in	
+    let dump_cell (k,v) = 
+      let sk = string_of_key k
+      in
+	output_str ("<"^sk^"> "^sk^" ")
+    and dump_child_key n =
+      let sk = string_of_key (getkey n)
+      in
+	output_str ("<i"^sk^"> "^sk^" ")
+    in
+    let rec dump_ parent n =
+      match n with
+	  Leaf (k,l) -> dump_link parent (string_of_key k); dump_leaf k l
+	| Node (k,l) -> dump_link parent (string_of_key k); dump_node k l
+	    
+    and dump_node k l = 
+      (* dump node structure *)
+      output_str (node_label k);
+      output_str " [ label = \" ";
+      dump_child_key (List.hd l);
+      List.iter (fun x -> output_str " | "; dump_child_key x ) (List.tl l);
+      output_str " \" ];\n";
+      (* dump children *)
+      List.iter (fun n -> dump_ (node_label k) n) l
+
+    and dump_leaf k l =
+      (* dump leaf structnure *)
+      output_str (node_label k);
+      output_str " [ label = \" ";
+      dump_cell (List.hd l);
+      List.iter (fun x -> output_str " | "; dump_cell x ) (List.tl l);
+      output_str " \" ];\n"
+      
+    in
+      output_str ("digraph "^filename^" {\n");
+      output_str ("name = "^filename^";\n");
+      output_str "node [shape=record];\n";
+      dump_ "root" tree.root;
+      output_str "}\n";
+      close_out file
 
 end

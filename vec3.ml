@@ -1,25 +1,8 @@
-(* a very simple 3D vector module *)
+(* very simple 3D vector module *)
+open Vec
 
-module type SCALAR =
-sig
-  type t
-  val  zero   : t
-  val  one    : t
-  val  add    : t -> t -> t
-  val  sub    : t -> t -> t
-  val  mul    : t -> t -> t
-  val  div    : t -> t -> t
-  val  opp    : t -> t
-  val  rand   : t -> t
-  val  modulo : t -> t -> t
-  val  epsilon: t
-  val  abs    : t -> t
-end
-
-module Make( T: SCALAR) =
+module Make( T: SCALAR ) =
 struct
-
-  module type SCALAR = SCALAR
 
   module Scalar = T
     
@@ -79,5 +62,14 @@ struct
   let min v1 v2 = map2 min v1 v2 
 
   let max v1 v2 = map2 max v1 v2 
+
+  let normalize v =
+    let n = Scalar.div Scalar.one (Scalar.sqrt (dot v v))
+    in 
+      scale v n
+
+  let to_string v =
+    let to_string = Scalar.to_string in
+    "< "^(to_string v.(0))^" ; "^(to_string v.(1))^" ; "^(to_string v.(2))^" >"
 
 end
