@@ -1,3 +1,4 @@
+
 module type SCALAR =
 sig
   type t
@@ -16,14 +17,13 @@ sig
   val  to_string : t -> string
 end
 
-module type VEC =
+module type T =
 sig
 
   module Scalar : SCALAR
 
   type t
   type tuple_t
-
 
   val size : int
     

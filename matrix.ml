@@ -1,7 +1,5 @@
-open Vec
-
 (* column based matrices *)
-module Make (V : VEC) = 
+module Make (V : Vec.T) = 
 struct 
 
   module T = V.Scalar

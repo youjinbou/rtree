@@ -1,7 +1,6 @@
 (*345678911234567892123456789312345678941234567895123456789612345678971234567898*)
-open Vec
 
-module Make (Coord: VEC) =
+module Make (Coord: Vec.T) =
 struct 
   class t (p1 : Coord.t) (p2 : Coord.t) = 
     let b_ = Coord.map2 min p1 p2

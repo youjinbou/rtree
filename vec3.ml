@@ -1,7 +1,5 @@
 (* very simple 3D vector module *)
-open Vec
-
-module Make( T: SCALAR ) =
+module Make (T: Vec.SCALAR ) =
 struct
 
   module Scalar = T
