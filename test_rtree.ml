@@ -75,8 +75,8 @@ end
 open Rtree 
 module Rtree3Def =
 struct 
-  let minimum = 2
-  let maximum = 4
+  let minimum = 1
+  let maximum = 2
   type t = box3d
 end
 
@@ -102,10 +102,9 @@ struct
 
 end
 
+
 (* ---------------------------------------------------------------------------------*)
 
-open View_volume
-    
 class view screen = 
 object (self)
 
@@ -118,18 +117,24 @@ object (self)
     let range = 100.0 in
     let maxv = [| range ; range ; range |] in
     let origb = [| -1.0; -1.0 ; -1.0 |]
-    and origt = [| 1.0 ; 1.0 ; 1.0 |] in
-    let r = Rtree3.make (new Rtree3.Rbox.t origb origt) (new box3d_gllist origb origt)
+    and origt = [| 1.0 ; 1.0 ; 1.0 |] in 
+    let r = Rtree3.make (new Rtree3.Rbox.t origb origt) (new box3d_gllist origb origt) 
+(*
+    let startb = [| -100.0; -10.0; 35.0 |]
+    and startt = [| -98.0; -12.0; 37.0 |] in
+    let r = Rtree3.make (new Rtree3.Rbox.t startb startt) (new box3d_gllist startb startt)
+*)
     in
+    let sfact = 3.0 in
     let rec addup i m =
-      (*      Rtree3.dump r (fname^"_"^(Printf.sprintf "%03d" i)) fdir; *)
+(*      Rtree3.dump r (fname^"_"^(Printf.sprintf "%03d" i)) fdir;  *)
       if i < m 
       then 
 	(*
-	let b = (FVec3.random maxv)
-	and t = (FVec3.random maxv)
+	  let b = (FVec3.random maxv)
+	  and t = (FVec3.random maxv)
 	*)
-	let b = FVec3.of_tuple ((float)(i / 100), (float)(i / 10), (float)(i mod 10))
+	let b = FVec3.of_tuple ((float)(i / 100) *. sfact, (float)((i / 10) mod 10) *. sfact, (float)(i mod 10) *. sfact)
 	in
 	let t = FVec3.map (fun x -> x +. 1.0) b 
 	in
@@ -137,7 +142,7 @@ object (self)
 	  addup (succ i) m
       else ()
     in
-      addup 0 15;
+      addup 0 200; 
       Rtree3.dump r fname fdir;
       r
 
@@ -152,11 +157,21 @@ object (self)
 
   val mutable texpos      = [| 0. ; 0.  ; 0. |]
 
+  val mutable focale_     = 1.5
+  val mutable depth_      = 60.
+
+
   val front = FVec3.of_tuple (0.0,0.0,1.0)
   val up    = FVec3.of_tuple (0.0,1.0,0.0)
   val right = FVec3.of_tuple (1.0,0.0,0.0)
 
   val mutable vdir = Array.make 3 (FVec3.null ())
+
+  method position () = pos
+
+  method vfront () = vdir.(2)
+  method vup () = vdir.(1)
+  method vright () = vdir.(0)
 
   val mutable keyboard_handler = fun a b -> ()
   val mutable mouse_handler    = fun a b c d -> ()
@@ -206,9 +221,11 @@ object (self)
       GlList.ends ();
       l
 	
-  method draw_grid =
-    GlList.call grid;
+  method draw_grid () =
+    GlList.call grid
 
+  method draw_compass () =
+    (new Compass.t (FVec3.opp pos) right up front vdir.(0) vdir.(1) vdir.(2))#draw ()
 
   method draw_node k =
     GlDraw.color (0.0,1.0,0.0);
@@ -226,21 +243,28 @@ object (self)
 
   val mutable full_draw = false
 
-  method draw_tree =
+
+  method init_visible () = 
+    (* let vpos = FVec3.map2 (fun x y -> -. (x -. (3. *. y))) pos vdir.(2) in *)
+    let vv = new View_volume.t vdir.(0) vdir.(1) vdir.(2) (FVec3.opp pos)
+    in
+      (*      vv#draw (); *)
+      visible <- Rtree3.hit rtree vv;
+      Debug.int "visibles : " (List.length visible);
+      List.iter (fun x -> Debug.int "id : " (Oo.id x)) visible
+
+  method draw_tree () =
     if full_draw 
     then (
       Rtree3.iter rtree self#draw_node self#draw_box
     )
     else (
       if auto_visible > 0
-      then (
-	prerr_string "-------------------------\n";
-	let vv = new view_volume () 
-	in
-	  visible <- Rtree3.hit rtree vv;
+      then ( 
+	self#init_visible ()
       );
       let dummy = new Rtree3.Rbox.t (FVec3.null ()) (FVec3.null ()) in
-      List.iter (self#draw_box dummy ) visible
+      List.iter (self#draw_box dummy) visible
     )
 
   method update_vdir () =
@@ -250,7 +274,18 @@ object (self)
       vdir.(1) <- FVec3.of_tuple (mat.(0).(1), mat.(1).(1), mat.(2).(1));
       vdir.(2) <- FVec3.of_tuple (mat.(0).(2), mat.(1).(2), mat.(2).(2))
 
-  method view_setup =
+  method projection_setup () =
+    (* projection setup *)
+    GlMat.mode `projection;
+    GlMat.load_identity();
+    GlMat.frustum 
+      ~x:( frustum_min.(0), frustum_max.(0) ) 
+      ~y:( frustum_min.(1), frustum_max.(1) ) 
+      ~z:( frustum_min.(2), frustum_max.(2) )
+
+  method view_setup () =
+    GlMat.mode `modelview;
+    GlMat.load_identity();
     GlMat.rotate ~angle:view_rot.(0) ~x:1.0 ();
     GlMat.rotate ~angle:view_rot.(1) ~y:1.0 ();
     GlMat.rotate ~angle:view_rot.(2) ~z:1.0 ();
@@ -259,37 +294,33 @@ object (self)
     GlMat.scale ~x:view_scale ~y:view_scale ~z:view_scale ()
 
   (* draw the whole thing *)
-  method draw =
+  method draw () =
+    (* modelview setup *)
     GlClear.clear [`color;`depth];
-    GlMat.mode `modelview;
-    GlMat.load_identity();
-    self#view_setup;
-    self#draw_grid; 
-    self#draw_tree;
+    self#projection_setup ();
+    self#view_setup ();
+    self#draw_grid ();
+    self#draw_compass ();
+    self#draw_tree ()
 
-  method display =
-    GlMat.mode `projection;
-    GlMat.load_identity();
-    GlMat.frustum 
-      ~x:( frustum_min.(0), frustum_max.(0) ) 
-      ~y:( frustum_min.(1), frustum_max.(1) ) 
-      ~z:( frustum_min.(2), frustum_max.(2) );
-    self#draw;
+  method display () =
+    self#draw ();
+    flush stderr;
     Sdlgl.swap_buffers ()
       
-  method reshape =
+  method reshape () =
     GlDraw.viewport ~x:0 ~y:0 ~w:width ~h:height;
     GlMat.mode `projection;
     GlMat.load_identity ();
     let r = (float width) /. (float height) 
-    and f = 1.5
+    and f = focale_
     in
-    frustum_min.(0) <- -.r ;        (* left view frustum    *)
-    frustum_max.(0) <-   r ;        (* right view frustum   *)
-    frustum_min.(1) <- -.1.;        (* bottom view frustum  *)
-    frustum_max.(1) <-   1.;        (* top view frustum     *)
-    frustum_min.(2) <-   f ;        (* view depth           *)
-    frustum_max.(2) <-  60.;        (* view depth           *)
+    frustum_min.(0) <-   -.r ;        (* left view frustum    *)
+    frustum_max.(0) <-     r ;        (* right view frustum   *)
+    frustum_min.(1) <-   -.1.;        (* bottom view frustum  *)
+    frustum_max.(1) <-     1.;        (* top view frustum     *)
+    frustum_min.(2) <-     f ;        (* view depth           *)
+    frustum_max.(2) <- depth_;        (* view depth           *)
     GlMat.frustum 
       ~x:( frustum_min.(0), frustum_max.(0) ) 
       ~y:( frustum_min.(1), frustum_max.(1) ) 
@@ -317,15 +348,28 @@ object (self)
     view_scale <- (let x = view_scale +. (float (xmcoord - old_xmcoord)) /. 100.0 in if x < limit then limit else x);
     old_xmcoord <- xmcoord
 
-  method depth a =
-    frustum_max.(2) <- frustum_max.(2) +. a 
+  method motion_focale ~xmcoord =
+    let limit = 1.0 in
+    focale_ <- (let x = focale_ +. (float (xmcoord - old_xmcoord)) /. 1000.0 in if x < limit then limit else x);
+    self#reshape ();
+    old_xmcoord <- xmcoord
 
-  method motion_off =
-    auto_visible <- pred auto_visible
+  method add_depth a =
+    depth_ <- depth_ +. a;
+    self#reshape ()
+
+  method motion_off = ()
     
   method mouse ~btn ~state ~xmcoord ~ymcoord =
     match state with 
-	RELEASED -> self#set_motion (fun a b  -> self#motion_off )
+	RELEASED -> (
+	  match btn with
+	      BUTTON_LEFT  -> 
+		self#set_motion (fun a b  -> self#motion_off );
+		auto_visible <- pred auto_visible
+	    | _            ->
+		self#set_motion (fun a b  -> self#motion_off )
+	)
       | PRESSED  -> (
 	  match btn with
 	      BUTTON_LEFT  -> (
@@ -337,8 +381,12 @@ object (self)
 		old_xmcoord <- xmcoord;
 		self#set_motion (fun a b  -> self#motion_scale a )
 	      )
-	    | BUTTON_WHEELUP   -> self#depth 10.
-	    | BUTTON_WHEELDOWN -> self#depth (-10.)
+	    | BUTTON_MIDDLE -> (
+		old_xmcoord <- xmcoord;
+		self#set_motion (fun a b  -> self#motion_focale a )
+	      )
+	    | BUTTON_WHEELUP   -> self#add_depth 10.
+	    | BUTTON_WHEELDOWN -> self#add_depth (-10.)
 	    | _            -> ()
  	)
 
@@ -367,7 +415,7 @@ object (self)
 	  match key with
 	      KEY_UNKNOWN -> ()
 	    | KEY_ESCAPE  -> Sdl.quit ();exit 0
-	    | KEY_r       -> self#reshape;
+	    | KEY_r       -> self#reshape ();
 	    | KEY_f       -> move 0 (-.speed_fact)
 	    | KEY_s       -> move 0 speed_fact
 	    | KEY_e       -> move 2 speed_fact
@@ -391,7 +439,7 @@ object (self)
 	    | MOUSEBUTTONDOWN   m
 	    | MOUSEBUTTONUP     m -> self#mouse ~btn:m.mbe_button ~state:m.mbe_state ~xmcoord:m.mbe_x ~ymcoord:m.mbe_y
 	    | MOUSEMOTION       m -> self#motion m.mme_x m.mme_y
-	    | _                   -> prerr_string "unhandled event";prerr_newline ()
+	    | _                   -> prerr_string "unhandled event";prerr_newline (); flush stderr
 	); check_events ()
     in
       check_events ()
@@ -402,14 +450,13 @@ object (self)
     in
 
     let t = Unix.gettimeofday () in
-      self#display;
+      self#display ();
       pos <- FVec3.add pos (FVec3.scale vdir.(0) speed.(0));
       pos <- FVec3.add pos (FVec3.scale vdir.(1) speed.(1));
       pos <- FVec3.add pos (FVec3.scale vdir.(2) speed.(2));
       self#check_events ();
-      let t = (Unix.gettimeofday ()) -. t -. timeframe
+      let t = timeframe -. (Unix.gettimeofday ()) -. t
       in if t > 0.0 then usleep t else ()
-
 
   method set_keyboard f = keyboard_handler <- f
   method set_mouse    f = mouse_handler    <- f
@@ -419,6 +466,9 @@ object (self)
     self#set_keyboard (fun a b     -> self#keyboard a b);
     self#set_mouse    (fun a b c d -> self#mouse a b c d);
     self#set_motion   (fun a b     -> self#motion_off );
+    self#projection_setup ();
+    self#view_setup ();
+    self#init_visible ();
   )
 
 end
@@ -471,7 +521,7 @@ let main () =
       init_draw ();
       let view = new view screen
       in
-	view#reshape;
+	view#reshape ();
 	while true do
 	  view#event_loop ()
 	done

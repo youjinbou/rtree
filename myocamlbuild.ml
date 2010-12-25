@@ -7,7 +7,10 @@ dispatch begin function
 
   let lablgl = "+lablGL" 
   and labltk = "+labltk"
-  and sdl    = "+sdl" in
+  and sdl    = "+sdl"
+  and ounit  = "+oUnit"
+
+  in
 
     (* add ulex preprocessor for use_ulex tag 
     flag ["ocaml";"pp";"use_ulex"] (S[A "camlp4o";A "-I";A "/usr/lib/ocaml/ulex";A "pa_ulex.cma"]);
@@ -57,6 +60,8 @@ dispatch begin function
     ocaml_lib ~extern:true ~dir:sdl    "sdlttf";
 (*    ocaml_lib ~extern:true ~dir:sdl    "sdlvideo"; *)
     ocaml_lib ~extern:true ~dir:sdl    "sdlwm";
+
+    ocaml_lib ~extern:true ~dir:ounit  "oUnit";
 
 | _ -> ()
 end;;

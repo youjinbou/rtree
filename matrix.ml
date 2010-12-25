@@ -1,36 +1,50 @@
 open Vec
 
+(* column based matrices *)
 module Make (V : VEC) = 
 struct 
 
   module T = V.Scalar
 
-  type t = T.t array array (* k² cells *)
+  let ( + ) = T.add
+  let ( - ) = T.sub
+  let ( * ) = T.mul
+  let ( / ) = T.div
+  let opp   = T.opp
+  let abs   = T.abs
+
+
+  type t = V.t array (* k² cells *)
 
   let size = V.size
 
   let get m i j =
-    m.(i).(j)
+    V.get m.(i) j
 
   let set m i j v = 
-    m.(i).(j) <- v
+    V.set m.(i) j v
 
   let null () = 
-    Array.init size (fun _ -> Array.make size T.zero)
+    Array.init size (fun _ -> V.null ())
 
   let identity () =
     let m = null () 
     in
       for i = 0 to (pred size) do
-	m.(i).(i) <- T.one
+	set m i i T.one
       done;
       m
 
   let row m n =
-    V.of_tuple (m.(0).(n), m.(1).(n), m.(2).(n), m.(3).(n))
+    let v = V.null () 
+    in
+      for i = 0 to (pred size) do
+	V.set v i (get m i n)
+      done;
+      v
 
   let col m n =
-    V.of_tuple (m.(n).(0), m.(n).(1), m.(n).(2), m.(n).(3))
+    m.(n)
 
   (* matrix product
     | A | x | B | =
@@ -52,8 +66,12 @@ struct
       @res the resulting matrix
   *)
   let multref m1 m2 res =
-    for i = 0 to (pred size)
-    do
+    for i = 0 to (pred size) do
+      for j = 0 to (pred size) do
+	set res i j ((get res i j) + (get m1 i j) * (get m2 j i))
+      done
+    done
+(*
       res.(i).(0) <- m1.(i).(0) *. m2.(0).(0) +. m1.(i).(1) *. m2.(1).(0) +. 
 	m1.(i).(2) *. m2.(2).(0) +. m1.(i).(3) *. m2.(3).(0);
       res.(i).(1) <- m1.(i).(0) *. m2.(0).(1) +. m1.(i).(1) *. m2.(1).(1) +. 
@@ -62,7 +80,7 @@ struct
 	m1.(i).(2) *. m2.(2).(2) +. m1.(i).(3) *. m2.(3).(2);
       res.(i).(3) <- m1.(i).(0) *. m2.(0).(3) +. m1.(i).(1) *. m2.(1).(3) +.
 	m1.(i).(2) *. m2.(2).(3) +. m1.(i).(3) *. m2.(3).(3);
-    done 
+*)
 
   (** mult 
       compute the result of multiplying 2 matrices
@@ -71,21 +89,30 @@ struct
   let mult m1 m2 =
     let res = null ()
     in
-      multref m1 m2 res; res
+      multref m1 m2 res; 
+      res
 
   (** apply
-      apply a matrix transformation to a given 4 dim vector
+      apply a matrix transformation to a given size dim vector
       @m the transformation matrix to apply
       @x,@y,@z,@w the vector components to be transformed
   *)
   let apply m v = 
-    let (x,y,z,w) = V.to_tuple v 
-    in 
-    let x = m.(0).(0) *. x +. m.(1).(0) *. y +. m.(2).(0) *. y +. m.(3).(0) *. w 
-    and y = m.(0).(1) *. x +. m.(1).(1) *. y +. m.(2).(1) *. y +. m.(3).(1) *. w 
-    and z = m.(0).(2) *. x +. m.(1).(2) *. y +. m.(2).(2) *. y +. m.(3).(2) *. w 
-    and w = m.(0).(3) *. x +. m.(1).(3) *. y +. m.(2).(3) *. y +. m.(3).(3) *. w 
-    in 
-      V.of_tuple (x,y,z,w)
+    let r = V.null ()
+    in
+      for i = 0 to (pred size) do
+	V.set r i (V.dot (row m i) v)
+      done;
+      r
+
+  let transpose m =
+    let r = null () 
+    in
+      for i = 0 to (pred size) do
+	for j = 0 to (pred size) do
+	  set r i j (get m j i)
+	done
+      done
+	
 
 end

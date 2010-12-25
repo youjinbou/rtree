@@ -82,7 +82,7 @@ struct
       match node with
 	  Leaf (k, cl) -> fold_left (fun l (k,b) -> if key#overlaps k then b::l else l) [] cl
 	| Node (k, nl) -> if key#overlaps k
-	  then fold_left (fun l nn -> append (hit nn key) l) [] nl
+	  then fold_left (fun l nn -> (hit nn key) @ l) [] nl
 	  else []
     in
       hit t.root key
@@ -306,7 +306,7 @@ struct
     let dump_cell (k,v) = 
       let sk = string_of_key k
       in
-	output_str ("<"^sk^"> "^sk^" ")
+	output_str ("<i"^sk^"> "^sk^" ")
     and dump_child_key n =
       let sk = string_of_key (getkey n)
       in
@@ -340,6 +340,11 @@ struct
       output_str ("name = "^filename^";\n");
       output_str "node [shape=record];\n";
       dump_ "root" tree.root;
+      (*
+      (match tree.root with
+	  Leaf (k,l) -> dump_leaf k l
+	| Node (k,l) -> dump_node k l);
+      *)
       output_str "}\n";
       close_out file
 

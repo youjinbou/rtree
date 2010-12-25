@@ -1,6 +1,5 @@
 open Primitives
 open Vec3
-open Matrix4
 open Debug
 
 module FVec3  = Vec3.Make(Float)
