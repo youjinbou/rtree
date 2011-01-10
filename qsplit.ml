@@ -1,10 +1,32 @@
+(*
+  a rtree library
+
+  Copyright (C) 2010  Didier Cassirame
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*)
 (* Quadratic split algorithm for RTREE *)
-module Make (Coord : Vec.T) (N : Splitnode.T with type scalar_t = Coord.Scalar.t) (Def : Rtreedef.T) = 
+module Make (Coord : Vec.T) (N : Splitnode.T with type scalar_t = Coord.Scalar.t) (Def : Rtreedef.T) : (Rtreesplit.T with type key_t = N.key_t and type node_t = N.node_t) = 
 struct
+
+  type key_t  = N.key_t
+  type node_t = N.node_t
   
-  let getkey = N.getkey
+  let getkey        = N.getkey
   let area_increase = N.area_increase
-  let expand = N.expand
+  let expand        = N.expand
 
   exception Error of string
 
@@ -14,6 +36,8 @@ struct
     match l with
 	[]   -> acc
       | h::t -> fold_left_l f (f acc h t) t
+
+  (* algorithm functions ------------------------------------------------- *)
  
   let pickseeds l =
     let pickseed ((c1, c2, a), c3) c4 =
@@ -26,7 +50,7 @@ struct
     let e1, e2, ll = 
       match l with
 	  s1::s2::ll -> s1, s2, ll
-	| _          -> raise (Error "pickseed: less than 3 elements")
+	| _          -> raise (Error "pickseed: less than 2 elements")
     in
     let (ee2, _)    = 
       List.fold_left pickseed (fst (List.fold_left pickseed ((e1, e2, area_increase (getkey e1) (getkey e2)), e1) ll), e2) ll in
@@ -69,8 +93,9 @@ struct
 		     the diff of increase *)
 		  let compute_both e r1 r2 = 
 		    let (-) = Coord.Scalar.sub in
-		    let i1 = area_increase r1 (getkey e)
-		    and i2 = area_increase r2 (getkey e)
+		    let re = (getkey e) in
+		    let i1 = area_increase r1 re
+		    and i2 = area_increase r2 re
 		    in
 		      if i1 <= i2 then (e, 1, i2 - i1) else (e, 2, i1 - i2)
 		  in

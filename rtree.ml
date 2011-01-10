@@ -1,8 +1,27 @@
+(*
+  a rtree library
+
+  Copyright (C) 2010  Didier Cassirame
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*)
 open Debug
 
 (*345678911234567892123456789312345678941234567895123456789612345678971234567898*)
 
-module Make (Coord: Vec.T) (Def : Rtreedef.T) =
+module Make (Coord: Vec.T) (Def : Rtreedef.T) (Split : Rtreesplit.Make) =
 struct
 
   open List
@@ -82,10 +101,10 @@ struct
 
   (* ------------------------------------------------------------------------------- *)
 
-  module Cell =
+  module Cell : Splitnode.T with type scalar_t = Coord.Scalar.t and type node_t = cell_t and type key_t = key_t =
   struct
     type node_t   = cell_t
-    type k_t      = key_t (* redefine upper module type to avoid cycle *)
+    type k_t      = key_t (* redefine upper module type to avoid a cycle *)
     type key_t    = k_t
     type scalar_t = Coord.Scalar.t
     let getkey        = fst
@@ -93,20 +112,20 @@ struct
     let expand r1 r2  = r1#expand r2
   end
 
-  module Node =
+  module Node : Splitnode.T with type scalar_t = Coord.Scalar.t and type node_t = node_t and type key_t = key_t =
   struct 
     type t        = node_t
     type node_t   = t
-    type k_t      = key_t (* redefine upper module type to avoid cycle *)
+    type k_t      = key_t (* redefine upper module type to avoid a cycle *)
     type key_t    = k_t
     type scalar_t = Coord.Scalar.t
     let getkey        = getkey
-    let area_increase = area_inc.rease
+    let area_increase = area_increase
     let expand r1 r2  = r1#expand r2
   end
 
-  module SplitLeaf = Qsplit.Make(Coord)(Cell)(Def)
-  module SplitNode = Qsplit.Make(Coord)(Node)(Def)
+  module SplitLeaf = Split(Coord)(Cell)(Def)
+  module SplitNode = Split(Coord)(Node)(Def)
 
   (* ------------------------------------------------------------------------------- *)
 
@@ -124,7 +143,7 @@ struct
   let rec insert n key value =
     match n with
 	Leaf (k, cl) -> (
-	  let c =  (key, value) 
+	  let c = (key, value) 
 	  in
 	    if length cl >= Def.maximum
 	    then

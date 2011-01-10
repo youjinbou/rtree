@@ -1,3 +1,22 @@
+(*
+  a rtree library
+
+  Copyright (C) 2010  Didier Cassirame
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*)
 open Sdl
 open Sdlvideo
 open Sdlevent
@@ -18,28 +37,34 @@ type rbox_t = Rbox3d.t
 (** view_volume :
     determine if a region box is within or crosses the viewing volume 
 *)
-class t vright vup vfront position =
+class t vright vup vfront depth position =
 object(self)
   
   val planes = 
     (* 4 planes corresponding to the 4 front faces of a tetrahedron with top vertex
        being the view position.
-       
        normals:
        front + up
        front - up
        front + right
        front - right
+
+       1 plane corresponding to the far view clipping:
+       normal : - vfront
+       
     *)
     let n1 = FVec3.opp (FVec3.add vfront vright)
     and n2 = FVec3.sub vright vfront
     and n3 = FVec3.opp (FVec3.add vfront vup)
     and n4 = FVec3.sub vup vfront
+    and n5 = FVec3.opp vfront
+    and p  = FVec3.add position (FVec3.scale vfront depth)
     in
       [| Plane.make n1 position ; 
 	 Plane.make n2 position ; 
 	 Plane.make n3 position ; 
-	 Plane.make n4 position |]
+	 Plane.make n4 position ;
+	 Plane.make n5 p |]
     (*       
        -----------------------------------------------------------------------
 
@@ -94,7 +119,8 @@ object(self)
          ((Plane.check_bbox planes.(0) bbox) <> 2) 
       && ((Plane.check_bbox planes.(1) bbox) <> 2)
       && ((Plane.check_bbox planes.(2) bbox) <> 2)
-      && ((Plane.check_bbox planes.(3) bbox) <> 2)
+      && ((Plane.check_bbox planes.(3) bbox) <> 2) 
+      && ((Plane.check_bbox planes.(4) bbox) <> 2)
 
     and b = rb#bottom
     and t = rb#top

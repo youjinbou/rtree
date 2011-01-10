@@ -1,3 +1,22 @@
+(*
+  a rtree library
+
+  Copyright (C) 2010  Didier Cassirame
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*)
 open Sdl
 open Sdlvideo
 open Sdlevent
@@ -12,14 +31,10 @@ open Common
 (* always useful *)
 let pi = acos (-.1.)
 
-class box3d =
-  let i = ref 0 in
-    fun b t ->
+class box3d b t =
 object(self)
 
   inherit Rbox3d.t b t as super
-
-  val id = let id = !i in incr i; id
 
   method draw () =
     let xb, yb, zb = FVec3.to_tuple self#bottom
@@ -73,14 +88,14 @@ object(self)
 end
 
 open Rtree 
-module Rtree3Def =
+module Rtree3Def : Rtreedef.T with type t = box3d =
 struct 
-  let minimum = 1
-  let maximum = 2
+  let minimum = 8
+  let maximum = 16
   type t = box3d
 end
 
-module Rtree3 = Rtree.Make(FVec3)(Rtree3Def)
+module Rtree3 = Rtree.Make(FVec3)(Rtree3Def)(Lsplit.Make)
 
 module Glv =
 struct
@@ -142,7 +157,7 @@ object (self)
 	  addup (succ i) m
       else ()
     in
-      addup 0 200; 
+      addup 0 2000; 
       Rtree3.dump r fname fdir;
       r
 
@@ -239,19 +254,25 @@ object (self)
 
   val mutable visible = []
 
-  val mutable auto_visible = 0
+
+  (* moving bitfield *)
+  val move_rotate    = 0x01
+  val move_forward   = 0x02
+  val move_side      = 0x04
+  val move_up        = 0x08
+  val mutable moving = 0
 
   val mutable full_draw = false
 
 
   method init_visible () = 
     (* let vpos = FVec3.map2 (fun x y -> -. (x -. (3. *. y))) pos vdir.(2) in *)
-    let vv = new View_volume.t vdir.(0) vdir.(1) vdir.(2) (FVec3.opp pos)
+    let vv = new View_volume.t vdir.(0) vdir.(1) vdir.(2) depth_ (FVec3.opp pos)
     in
       (*      vv#draw (); *)
       visible <- Rtree3.hit rtree vv;
       Debug.int "visibles : " (List.length visible);
-      List.iter (fun x -> Debug.int "id : " (Oo.id x)) visible
+(*      List.iter (fun x -> Debug.int "id : " (Oo.id x)) visible *)
 
   method draw_tree () =
     if full_draw 
@@ -259,7 +280,7 @@ object (self)
       Rtree3.iter rtree self#draw_node self#draw_box
     )
     else (
-      if auto_visible > 0
+      if moving > 0
       then ( 
 	self#init_visible ()
       );
@@ -290,8 +311,12 @@ object (self)
     GlMat.rotate ~angle:view_rot.(1) ~y:1.0 ();
     GlMat.rotate ~angle:view_rot.(2) ~z:1.0 ();
     self#update_vdir ();
+    GlMat.load_identity();    
+    GlMat.rotate ~angle:view_rot.(0) ~x:1.0 ();
+    GlMat.rotate ~angle:view_rot.(1) ~y:1.0 ();
+    GlMat.rotate ~angle:view_rot.(2) ~z:1.0 ();
     GlMat.translate ~x:pos.(0) ~y:pos.(1) ~z:pos.(2) ();
-    GlMat.scale ~x:view_scale ~y:view_scale ~z:view_scale ()
+    GlMat.scale ~x:view_scale ~y:view_scale ~z:view_scale ();
 
   (* draw the whole thing *)
   method draw () =
@@ -339,7 +364,6 @@ object (self)
     GlClear.clear [`color;`depth]
 
   method motion_rot ~xmcoord ~ymcoord =
-    auto_visible <- succ auto_visible;
     self#rotx ((float ymcoord) -. (float old_ymcoord)); old_ymcoord <- ymcoord;
     self#roty ((float xmcoord) -. (float old_xmcoord)); old_xmcoord <- xmcoord
 
@@ -363,14 +387,15 @@ object (self)
   method mouse ~btn ~state ~xmcoord ~ymcoord =
     match state with 
 	RELEASED -> (
+	  moving <- moving land (lnot move_rotate);
 	  match btn with
 	      BUTTON_LEFT  -> 
 		self#set_motion (fun a b  -> self#motion_off );
-		auto_visible <- pred auto_visible
 	    | _            ->
 		self#set_motion (fun a b  -> self#motion_off )
 	)
       | PRESSED  -> (
+	  moving <- moving lor move_rotate;
 	  match btn with
 	      BUTTON_LEFT  -> (
 		old_xmcoord <- xmcoord;
@@ -393,10 +418,10 @@ object (self)
   method keyboard ~key ~state =
     let speed_fact = 0.1 in
     let move k fact =
-      auto_visible <- succ auto_visible;
+      moving <- moving lor (k lsl 2);
       speed.(k) <- speed.(k) +. fact
     and stop k fact =
-      auto_visible <- pred auto_visible;
+      moving <- moving land (lnot (k lsl 2));
       speed.(k) <- speed.(k) -. fact
     in
     match state with 
