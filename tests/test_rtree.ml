@@ -427,12 +427,12 @@ object (self)
     match state with 
 	RELEASED -> (
 	  match key with
-	    | KEY_f       -> stop 0 (-.speed_fact)
-	    | KEY_s       -> stop 0 speed_fact
-	    | KEY_e       -> stop 2 speed_fact
-	    | KEY_d       -> stop 2 (-.speed_fact)
-	    | KEY_t       -> stop 1 (-.speed_fact)
-	    | KEY_g       -> stop 1 speed_fact
+	    | KEY_RIGHT    | KEY_f       -> stop 0 (-.speed_fact)
+	    | KEY_LEFT     | KEY_s       -> stop 0 speed_fact
+	    | KEY_UP       | KEY_e       -> stop 2 speed_fact
+	    | KEY_DOWN     | KEY_d       -> stop 2 (-.speed_fact)
+	    | KEY_PAGEUP   | KEY_t       -> stop 1 (-.speed_fact)
+	    | KEY_PAGEDOWN | KEY_g       -> stop 1 speed_fact
 	    | KEY_q       -> full_draw <- false
 	    | _           -> ()
 	)
@@ -441,12 +441,12 @@ object (self)
 	      KEY_UNKNOWN -> ()
 	    | KEY_ESCAPE  -> Sdl.quit ();exit 0
 	    | KEY_r       -> self#reshape ();
-	    | KEY_f       -> move 0 (-.speed_fact)
-	    | KEY_s       -> move 0 speed_fact
-	    | KEY_e       -> move 2 speed_fact
-	    | KEY_d       -> move 2 (-.speed_fact)
-	    | KEY_t       -> move 1 (-.speed_fact)
-	    | KEY_g       -> move 1 speed_fact
+	    | KEY_RIGHT    | KEY_f       -> move 0 (-.speed_fact)
+	    | KEY_LEFT     | KEY_s       -> move 0 speed_fact
+	    | KEY_UP       | KEY_e       -> move 2 speed_fact
+	    | KEY_DOWN     | KEY_d       -> move 2 (-.speed_fact)
+	    | KEY_PAGEUP   | KEY_t       -> move 1 (-.speed_fact)
+	    | KEY_PAGEDOWN | KEY_g       -> move 1 speed_fact
 	    | KEY_q       -> full_draw <- true
 	    | KEY_SPACE   -> Debug.fvec "pos: " pos; Debug.fvec "rot: " view_rot;  Debug.fvec "frustum_min : " frustum_min; Debug.fvec "frustum_max : " frustum_max ; Debug.float "scale :" view_scale
 	    | _           -> ()
