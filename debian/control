@@ -1,0 +1,27 @@
+Source: rtree
+Priority: extra
+Maintainer: dc <dc@localhost>
+Build-Depends: debhelper (>= 7)
+Standards-Version: 3.7.3
+
+Package: librtree-ocaml
+Section: libs
+Architecture: any
+Depends: ${ocaml:Provides}, ${ocaml:Depends}
+Tag: devel::lang:ocaml, devel::library, implemented-in::ocaml, role::shared-lib
+Description: Rtree library for OCaml
+ A Rtree is a tree algorithmic structure used to efficiently partition 
+ objects over multiple criteria. One may find or select objects from a 
+ list by constructing such a tree, and querying it.
+ This package contains the runtime libraries.
+
+Package: librtree-ocaml-dev
+Section: libdevel
+Architecture: all
+Depends: librtree-ocaml
+Tag: devel::lang:ocaml, devel::library, implemented-in::ocaml, role::devel-lib
+Description: Applicative events and signals for OCaml
+ A Rtree is a tree algorithmic structure used to efficiently partition 
+ objects over multiple criteria. One may find or select objects from a 
+ list by constructing such a tree, and querying it.
+ This package contains the development files.
