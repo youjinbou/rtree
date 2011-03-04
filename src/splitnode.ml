@@ -18,7 +18,7 @@
   <http://www.gnu.org/licenses/>.
 
 *)
-(** rtree node module signature used by the splitting functor @Splitnode *)
+(** rtree node module signature used by the splitting functor *)
 module type T =
 sig 
   type node_t

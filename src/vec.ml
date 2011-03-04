@@ -19,8 +19,10 @@
 
 *)
 
-(** minimal scalar interface needed for the library *)
+(** module signatures for scalar and vector values *)
 
+
+(** minimal scalar interface needed for the library *)
 module type SCALAR =
 sig
   type t
@@ -31,7 +33,6 @@ sig
 end
 
 (** minimal vector interface needed for the library *)
-
 module type T =
 sig
 

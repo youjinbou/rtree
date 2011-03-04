@@ -34,11 +34,11 @@ rule () {
 	all)
 	    ocb $TARGET.cmxa $TARGET.cma $TARGET.docdir/index.html ;;
 	install-bin) 
-	    LIB_FILES=("$BUILD_PATH/$TARGET.cmxa" "$BUILD_PATH/$TARGET.cma")
+	    LIB_FILES=("$BUILD_PATH/$TARGET.cmxa" "$BUILD_PATH/$TARGET.cma" "src/META")
 	    $INSTALL -d $INSTALL_LIB_DIR 
 	    $INSTALL -D ${LIB_FILES[@]} $INSTALL_LIB_DIR ;;
 	install-api)
-	    API_FILES="$BUILD_PATH/$TARGET.cmi"
+	    API_FILES=("$BUILD_PATH/$TARGET.cmi")
 	    $INSTALL -d $INSTALL_API_DIR 
 	    $INSTALL -D ${API_FILES[@]} $INSTALL_API_DIR ;;
 	install-doc)
