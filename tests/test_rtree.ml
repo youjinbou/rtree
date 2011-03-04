@@ -87,15 +87,14 @@ object(self)
 
 end
 
-open Rtree 
-module Rtree3Def : Rtreedef.T with type t = box3d =
+module Rtree3Def : Rtree.Rtreedef.T with type t = box3d =
 struct 
   let minimum = 8
   let maximum = 16
   type t = box3d
 end
 
-module Rtree3 = Rtree.Make(FVec3)(Rtree3Def)(Lsplit.Make)
+module Rtree3 = Rtree.Make(FVec3)(Rtree3Def)(Rtree.Lsplit.Make)
 
 module Glv =
 struct

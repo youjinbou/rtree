@@ -1,22 +1,24 @@
 (*
   a rtree library
 
-  Copyright (C) 2010  Didier Cassirame
+  Copyright (C) 2010-2011 Didier Cassirame
 
-  This program is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  This  program  is free software:  you can redistribute it and/or 
+  modify  it  under  the  terms  of  the GNU Lesser General Public 
+  License  as  published  by  the Free Software Foundation, either 
+  version 3 of the License, or (at your option) any later version.
 
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
+  This  program is distributed in the hope that it will be useful,
+  but  WITHOUT  ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY  or  FITNESS  FOR A PARTICULAR PURPOSE.  See the
+  GNU Lesser General Public License for more details.
 
-  You should have received a copy of the GNU General Public License
-  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  You should have received a copy of the GNU Lesser General Public 
+  License along with this program. If not, see 
+  <http://www.gnu.org/licenses/>.
 
 *)
+
 (** debug module: a set of debugging functions *)
 let flusherr () = (* flush stderr *) ()
 
@@ -49,7 +51,7 @@ let farray s a =
   prerr_string " |]\n"; 
   flusherr ()
 
-(** output the content of the string a, prefixed by the string s, in a per character fashion *)
+(** output the content of the string a, each character separated, prefixed by the string s *)
 let string s a = 
   prerr_string s;
   if String.length a <> 0
