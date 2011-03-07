@@ -17,12 +17,14 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 *)
-(* very simple 3D vector module *)
-module Make (T: Vec.SCALAR ) =
+(* this vector module is slightly more complex than needed for the rtree
+   library
+*)
+module Make (T: Tvec.SCALAR) =
 struct
 
   module Scalar = T
-    
+  
   type t = T.t array
 
   type tuple_t = T.t * T.t * T.t

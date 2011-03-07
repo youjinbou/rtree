@@ -34,7 +34,7 @@ let pi = acos (-.1.)
 class box3d b t =
 object(self)
 
-  inherit Rbox3d.t b t as super
+  inherit Rb.c b t as super
 
   method draw () =
     let xb, yb, zb = FVec3.to_tuple self#bottom
@@ -60,7 +60,7 @@ object(self)
       GlDraw.vertex ~x:xb ~y:yb ~z:zb ();
       GlDraw.vertex ~x:xb ~y:yb ~z:zt ();
       GlDraw.ends ()
-	
+
 end  
 
 class box3d_gllist b t =
@@ -94,7 +94,7 @@ struct
   type t = box3d
 end
 
-module Rtree3 = Rtree.Make(FVec3)(Rtree3Def)(Rtree.Lsplit.Make)
+module Rtree3 = Rtree.Make(Rtree.Lsplit.Make)(Rbox3d.Make)(FVec3)(Rtree3Def)
 
 module Glv =
 struct
@@ -132,7 +132,7 @@ object (self)
     let maxv = [| range ; range ; range |] in
     let origb = [| -1.0; -1.0 ; -1.0 |]
     and origt = [| 1.0 ; 1.0 ; 1.0 |] in 
-    let r = Rtree3.make (new Rtree3.Rbox.t origb origt) (new box3d_gllist origb origt) 
+    let r = Rtree3.make (new Rb.c origb origt) (new box3d_gllist origb origt) 
 (*
     let startb = [| -100.0; -10.0; 35.0 |]
     and startt = [| -98.0; -12.0; 37.0 |] in
@@ -152,7 +152,7 @@ object (self)
 	in
 	let t = FVec3.map (fun x -> x +. 1.0) b 
 	in
-	  Rtree3.insert r (new Rtree3.Rbox.t b t) (new box3d_gllist b t);
+	  Rtree3.insert r (new Rb.c b t) (new box3d_gllist b t);
 	  addup (succ i) m
       else ()
     in
@@ -256,9 +256,9 @@ object (self)
 
   (* moving bitfield *)
   val move_rotate    = 0x01
-  val move_forward   = 0x02
-  val move_side      = 0x04
-  val move_up        = 0x08
+  val move_z         = 0x02
+  val move_x         = 0x04
+  val move_y         = 0x08
   val mutable moving = 0
 
   val mutable full_draw = false
@@ -269,7 +269,7 @@ object (self)
     let vv = new View_volume.t vdir.(0) vdir.(1) vdir.(2) depth_ (FVec3.opp pos)
     in
       (*      vv#draw (); *)
-      visible <- Rtree3.hit rtree vv;
+      visible <- Rtree3.filter rtree vv#overlaps;
       Debug.int "visibles : " (List.length visible);
 (*      List.iter (fun x -> Debug.int "id : " (Oo.id x)) visible *)
 
@@ -279,12 +279,12 @@ object (self)
       Rtree3.iter rtree self#draw_node self#draw_box
     )
     else (
-      if moving > 0
+      if moving <> 0
       then ( 
 	self#init_visible ()
       );
-      let dummy = new Rtree3.Rbox.t (FVec3.null ()) (FVec3.null ()) in
-      List.iter (self#draw_box dummy) visible
+      let dummy = new Rb.c (FVec3.null ()) (FVec3.null ()) in
+      List.iter (fun (k,v) -> self#draw_box dummy v) visible
     )
 
   method update_vdir () =
@@ -411,27 +411,26 @@ object (self)
 	      )
 	    | BUTTON_WHEELUP   -> self#add_depth 10.
 	    | BUTTON_WHEELDOWN -> self#add_depth (-10.)
-	    | _            -> ()
  	)
 
   method keyboard ~key ~state =
     let speed_fact = 0.1 in
-    let move k fact =
-      moving <- moving lor (k lsl 2);
+    let move k fact flag =
+      moving <- moving lor flag;
       speed.(k) <- speed.(k) +. fact
-    and stop k fact =
-      moving <- moving land (lnot (k lsl 2));
+    and stop k fact flag =
+      moving <- moving land (lnot flag);
       speed.(k) <- speed.(k) -. fact
     in
     match state with 
 	RELEASED -> (
 	  match key with
-	    | KEY_RIGHT    | KEY_f       -> stop 0 (-.speed_fact)
-	    | KEY_LEFT     | KEY_s       -> stop 0 speed_fact
-	    | KEY_UP       | KEY_e       -> stop 2 speed_fact
-	    | KEY_DOWN     | KEY_d       -> stop 2 (-.speed_fact)
-	    | KEY_PAGEUP   | KEY_t       -> stop 1 (-.speed_fact)
-	    | KEY_PAGEDOWN | KEY_g       -> stop 1 speed_fact
+	    | KEY_RIGHT    | KEY_f       -> stop 0 (-.speed_fact) move_x
+	    | KEY_LEFT     | KEY_s       -> stop 0 speed_fact move_x
+	    | KEY_UP       | KEY_e       -> stop 2 speed_fact move_y
+	    | KEY_DOWN     | KEY_d       -> stop 2 (-.speed_fact) move_y
+	    | KEY_PAGEUP   | KEY_t       -> stop 1 (-.speed_fact) move_z
+	    | KEY_PAGEDOWN | KEY_g       -> stop 1 speed_fact move_z
 	    | KEY_q       -> full_draw <- false
 	    | _           -> ()
 	)
@@ -440,12 +439,12 @@ object (self)
 	      KEY_UNKNOWN -> ()
 	    | KEY_ESCAPE  -> Sdl.quit ();exit 0
 	    | KEY_r       -> self#reshape ();
-	    | KEY_RIGHT    | KEY_f       -> move 0 (-.speed_fact)
-	    | KEY_LEFT     | KEY_s       -> move 0 speed_fact
-	    | KEY_UP       | KEY_e       -> move 2 speed_fact
-	    | KEY_DOWN     | KEY_d       -> move 2 (-.speed_fact)
-	    | KEY_PAGEUP   | KEY_t       -> move 1 (-.speed_fact)
-	    | KEY_PAGEDOWN | KEY_g       -> move 1 speed_fact
+	    | KEY_RIGHT    | KEY_f       -> move 0 (-.speed_fact) move_x
+	    | KEY_LEFT     | KEY_s       -> move 0 speed_fact move_x
+	    | KEY_UP       | KEY_e       -> move 2 speed_fact move_y
+	    | KEY_DOWN     | KEY_d       -> move 2 (-.speed_fact) move_y
+	    | KEY_PAGEUP   | KEY_t       -> move 1 (-.speed_fact) move_z
+	    | KEY_PAGEDOWN | KEY_g       -> move 1 speed_fact move_z
 	    | KEY_q       -> full_draw <- true
 	    | KEY_SPACE   -> Debug.fvec "pos: " pos; Debug.fvec "rot: " view_rot;  Debug.fvec "frustum_min : " frustum_min; Debug.fvec "frustum_max : " frustum_max ; Debug.float "scale :" view_scale
 	    | _           -> ()

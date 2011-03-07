@@ -18,9 +18,9 @@
 
 *)
 open Primitives
-open Vec3
 open Debug
 
-module FVec3  = Vec3.Make(Float)
+module FVec3 = Vec3.Make(Primitives.Float)
 
-module Rbox3d = Rbox.Make(FVec3)
+module Rb = Rbox3d.Make(FVec3)
+

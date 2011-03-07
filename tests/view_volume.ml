@@ -32,14 +32,14 @@ module FVec4 = Vec4.Make(Primitives.Float)
 
 module FMatrix4 = Matrix.Make(FVec4)
   
-type rbox_t = Rbox3d.t
+type rbox_t = Rb.t
 
 (** view_volume :
     determine if a region box is within or crosses the viewing volume 
 *)
 class t vright vup vfront depth position =
 object(self)
-  
+
   val planes = 
     (* 4 planes corresponding to the 4 front faces of a tetrahedron with top vertex
        being the view position.
@@ -113,7 +113,8 @@ object(self)
         (Plane.in_or_above planes.(i) v) && inside (pred i) v
     in
       inside 3 p 
-	
+
+
   method overlaps (rb : rbox_t) = 
     let rec check_plane bbox = 
          ((Plane.check_bbox planes.(0) bbox) <> 2) 
@@ -142,6 +143,17 @@ object(self)
 	GlDraw.ends ()
     in
     Array.iter (fun x -> draw_plane x) planes
+
+
+  (* all these are defined to provide a sig compatibility with Rb.t 
+     required by the module type used in the library
+  *)
+  method top = vright
+  method bottom = vright
+  method area = 0.0
+  method area_with (x : Rb.t) = 0.0
+  method expand (x : Rb.t) = (self :> Rb.t)
+  method to_string = "view volume"
   
   initializer (
     prerr_string "new view_volume"; prerr_newline (); flush stderr

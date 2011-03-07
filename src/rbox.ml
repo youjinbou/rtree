@@ -19,103 +19,138 @@
 
 *)
 
-(** rbox is a module containing the bounding box class used by rtree
-    to hold subregions of the tree.
-*)
+(** rbox is an implementation of the region module *)
+
 module Make (Coord: Vec.T) =
 struct 
-  class t (p1 : Coord.t) (p2 : Coord.t) = 
+
+  type key_t    = Coord.t
+  type scalar_t = Coord.Scalar.t
+
+
+  type t = {
+    bottom : Coord.t;
+    top    : Coord.t;
+    area   : Coord.Scalar.t Lazy.t;
+  }
+
+
+  (* some coord helpers ------------------------------------------------- *)
+  let list_of_coord c =
+    let rec blist i l = 
+      if i < 0 then l else blist (pred i) ((Coord.get c i)::l)
+    in
+      blist Coord.size []
+
+  let string_of_coord c =
+    let to_s = Coord.Scalar.to_string in
+      match Coord.size with
+	  1 -> "<"^(to_s (Coord.get c 1))^">"
+	| n -> let l = (list_of_coord c)
+	  in
+	    "<"^(List.fold_left (fun acc x -> acc^";"^(to_s x)) (to_s (List.hd l)) (List.tl l))^">"
+
+  (* -------------------------------------------------------------------- *)
+
+  let to_string k =
+    "["^(string_of_coord (k.top))^"-"^(string_of_coord (k.bottom))^"]"
+
+
+
+  (** returns the volume size between points b_ and t_ *)
+  let area_ b_ t_ = 
+    let x = Coord.sub t_ b_ in
+      Coord.dot x x
+
+
+  let make p1 p2 =
     let b_ = Coord.map2 min p1 p2
     and t_ = Coord.map2 max p1 p2
+    in { 
+	bottom = b_;
+	top    = t_;
+	area   = lazy (area_ b_ t_);
+      }
+	 
+  let dims v = Coord.sub v.top v.bottom
+
+  let center v = 
+    let half = Coord.Scalar.div Coord.Scalar.one (Coord.Scalar.add Coord.Scalar.one Coord.Scalar.one)
     in
-  object(self)
+    let d = (Coord.scale (dims v) half)
+    in 
+      Coord.add v.bottom d
+	
 
-    method bottom = b_
-    method top    = t_
+  let area v = Lazy.force v.area
 
-    method dims   = Coord.sub t_ b_
-
-    method center = 
-      let half = Coord.Scalar.div Coord.Scalar.one (Coord.Scalar.add Coord.Scalar.one Coord.Scalar.one)
-      in
-      let d = (Coord.scale self#dims half)
-      in 
-	Coord.add b_ d
-	  
-    (* volume covered by self *)
-    val area_ = 
-      let x = Coord.sub t_ b_ in
-	Coord.dot x x
-
-    (* whether the rbox rb overlaps with self *)
-    method overlaps (rb : t) = 
-      let segment_overlap s1 s2 e1 e2 =
-	(s1 < e2) && (s2 < e1)
-      in
-      let b1 = b_ 
-      and b2 = rb#bottom
-      and t1 = t_ 
-      and t2 = rb#top
-      in
-      let rec check_seg i =
-	if i = -1 
-	then true 
-	else
-	  let s1 = Coord.get b1 i
-	  and s2 = Coord.get b2 i
-	  and e1 = Coord.get t1 i
-	  and e2 = Coord.get t2 i
-	  in
-	    (segment_overlap s1 s2 e1 e2) && check_seg (pred i)
-      in
-	check_seg (pred Coord.size)
-
-    (* whether the rbox rb fits in self *)
-    method includes (rb : t) =
-      let segment_include s1 s2 e1 e2 =
-	(s1 <= s2) && (e2 <= e1)
-      in
-      let b1 = b_ 
-      and b2 = rb#bottom
-      and t1 = t_ 
-      and t2 = rb#top
-      in
-      let rec check_seg i =
-	if i = -1 
-	then true 
-	else
-	  let s1 = Coord.get b1 i
-	  and s2 = Coord.get b2 i
-	  and e1 = Coord.get t1 i
-	  and e2 = Coord.get t2 i
-	  in
-	    (segment_include s1 s2 e1 e2) && check_seg (pred i)
-      in
-	check_seg (pred Coord.size)
-	  
-    method area () = area_
-
-    (* whether self surrounds the point p *)
-    method surrounds p =
-      let rec check f p1 p2 i =
-	let c k = (f (Coord.get p1 k) (Coord.get p2 k)) 
+  (** return true if the rbox rb overlaps with v *)
+  let overlaps v rb = 
+    let segment_overlap s1 s2 e1 e2 =
+      (s1 < e2) && (s2 < e1)
+    in
+    let b1 = v.bottom 
+    and b2 = rb.bottom
+    and t1 = v.top 
+    and t2 = rb.top
+    in
+    let rec check_seg i =
+      if i = -1 
+      then true 
+      else
+	let s1 = Coord.get b1 i
+	and s2 = Coord.get b2 i
+	and e1 = Coord.get t1 i
+	and e2 = Coord.get t2 i
 	in
-	  if i = 0
-	  then c 0
-	  else
-	    (c i) && (check f p1 p2 (pred i))
+	  (segment_overlap s1 s2 e1 e2) && check_seg (pred i)
+    in
+      check_seg (pred Coord.size)
+
+  (** returns true if the rbox rb fits in v *)
+  let includes v rb =
+    let segment_include s1 s2 e1 e2 =
+      (s1 <= s2) && (e2 <= e1)
+    in
+    let b1 = v.bottom 
+    and b2 = rb.bottom
+    and t1 = v.top 
+    and t2 = rb.top
+    in
+    let rec check_seg i =
+      if i = -1 
+      then true 
+      else
+	let s1 = Coord.get b1 i
+	and s2 = Coord.get b2 i
+	and e1 = Coord.get t1 i
+	and e2 = Coord.get t2 i
+	in
+	  (segment_include s1 s2 e1 e2) && check_seg (pred i)
+    in
+      check_seg (pred Coord.size)
+	  
+  (** returns true if v surrounds the point p *)
+  let surrounds v p =
+    let rec check f p1 p2 i =
+      let c k = (f (Coord.get p1 k) (Coord.get p2 k)) 
       in
-	(check (<) p t_ (pred Coord.size)) && (check (>) p b_ (pred Coord.size))
+	if i = 0
+	then c 0
+	else
+	  (c i) && (check f p1 p2 (pred i))
+    in
+      (check (<) p v.top (pred Coord.size)) && (check (>) p v.bottom (pred Coord.size))
 
-    (* create new rbox covering self and the rbox rb *)
-    method expand (rb : t) =
-      let bottom = Coord.map2 min rb#bottom b_
-      and top    = Coord.map2 max rb#top t_
-      in
-	new t bottom top
 
-    method area_with (rb : t) = 
-      (self#expand rb)#area ()
-
-  end
+  (** create new rbox covering self and the rbox rb *)
+  let expand v rb =
+    let bottom = Coord.map2 min rb.bottom v.bottom
+    and top    = Coord.map2 max rb.top v.top
+    in
+      make bottom top
+	
+  let area_with v rb = 
+    area (expand v rb)
+      
 end

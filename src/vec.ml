@@ -26,10 +26,11 @@
 module type SCALAR =
 sig
   type t
-  val  one    : t
-  val  add    : t -> t -> t
-  val  sub    : t -> t -> t
-  val  div    : t -> t -> t
+  val  one       : t
+  val  add       : t -> t -> t
+  val  sub       : t -> t -> t
+  val  div       : t -> t -> t
+  val  to_string : t -> string
 end
 
 (** minimal vector interface needed for the library *)
@@ -37,7 +38,6 @@ module type T =
 sig
 
   module Scalar : SCALAR
-
     
   type t
 

@@ -19,7 +19,7 @@
 *)
 (* very simple 3D vector module *)
 
-module Make ( T: Vec.SCALAR ) =
+module Make (T: Tvec.SCALAR) =
 struct
 
   module Scalar = T

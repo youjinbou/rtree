@@ -19,6 +19,11 @@
 
 *)
 
+(** module type definition for regions *)
+
+(** this is the module signature for the region datatype used in
+    the rtree do delimit subregions of the space.
+*)
 module type T =
 sig
 
@@ -29,12 +34,13 @@ sig
   val expand    : t -> t -> t
   val area      : t -> scalar_t
   val area_with : t -> t -> scalar_t
-  val overlaps  : t -> t -> bool
-  val includes  : t -> t -> bool
   val to_string : t -> string
 
 end
 
-
+(** the functor required by the library to set up from the Coordinate 
+    system (also required - see Vec) a module of signature defined 
+    above.
+*)
 module type Make =
   functor (Coord: Vec.T) -> T with type scalar_t = Coord.Scalar.t and type key_t = Coord.t

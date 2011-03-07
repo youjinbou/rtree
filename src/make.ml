@@ -21,50 +21,44 @@
 
 open Debug
 
-(** the functor to build a rtree handling module *)
+(** the functor used to build a rtree handling module *)
 
 module Make = 
-functor (Split : Rtreesplit.Make) -> functor (Coord: Vec.T) -> functor (Def : Rtreedef.T) -> 
+  functor (Split : Rtreesplit.Make) -> 
+    functor (Region : Region.Make)  ->
+      functor (Coord: Vec.T)        -> 
+	functor (Def : Rtreedef.T)  -> 
 struct
-
+  
   open List
-
+    
   exception Error of string
-
+    
+    
   (* some list manipulation helpers -------------------------------------- *)
-
+    
   let rec extract f acc l lr =
-      match l with 
-	  []      -> (acc, lr)
-	| hd::tl  -> 
-	    let nacc, nr = f acc hd 
-	    in 
-	      extract f nacc tl (nr::lr)
+    match l with 
+	[]      -> (acc, lr)
+      | hd::tl  -> 
+	  let nacc, nr = f acc hd 
+	  in 
+	    extract f nacc tl (nr::lr)
 
   (* Region Boxen -------------------------------------------------------- *)
 
-  module Rbox = Rbox.Make(Coord)
-
-  let covering l =
-    let rec cover l r =
-      match l with
-	  []   -> r
-	| a::b -> cover b (r#expand a#key)
-    in
-      match l with
-	  []   -> invalid_arg "covering : empty list"
-	| a::b -> cover l a#key
+  module R = Region(Coord)
 
   let area_increase c1 c2 =
     let (-) = Coord.Scalar.sub in
-      ((c1#area_with c2) 
-       - (c1#area ())) - (c2#area ())
+      ((R.area_with c1 c2) 
+       - (R.area c1)) - (R.area c2)
 
   (* --------------------------------------------------------------------- *)
-    
+	
   (* plain sum types to represent rtrees : same as btrees *)
 
-  type key_t = Rbox.t
+  type key_t = R.t
 
   type value_t = Def.t
       
@@ -82,27 +76,17 @@ struct
 
   (* ------------------------------------------------------------------------------- *)
 
-  (** returns the list of values in the tree which partially match the key *)
-  let hit tree key =
-    let rec hit node key =
+  (** returns the list of values in the tree which are filtered by f *)
+  let filter tree (f : key_t -> bool) =
+    let rec filter node f =
       match node with
-	  Leaf (k, cl) -> fold_left (fun l (k,b) -> if key#overlaps k then b::l else l) [] cl
-	| Node (k, nl) -> if key#overlaps k
-	  then fold_left (fun l nn -> (hit nn key) @ l) [] nl
-	  else []
+	  Leaf (k, cl) -> fold_left (fun l (k,b) -> if f k then (k,b)::l else l) [] cl
+	| Node (k, nl) -> 
+	    if f k
+	    then fold_left (fun l nn -> append (filter nn f) l) [] nl
+	    else []
     in
-      hit tree.root key
-
-  (** returns the list of values in the tree which completely match the key *)
-  let includes tree key =
-    let rec includes node key =
-      match node with
-	  Leaf (k, cl) -> fold_left (fun l (k,b) -> if key#includes k then (k,b)::l else l) [] cl
-	| Node (k, nl) -> if key#includes k
-	  then fold_left (fun l nn -> append (includes nn key) l) [] nl
-	  else []
-    in
-      includes tree.root key
+      filter tree.root f
 
   (* ------------------------------------------------------------------------------- *)
 
@@ -114,7 +98,7 @@ struct
     type scalar_t = Coord.Scalar.t
     let getkey        = fst
     let area_increase = area_increase
-    let expand r1 r2  = r1#expand r2
+    let expand r1 r2  = R.expand r1 r2
   end
 
   module Node : Splitnode.T with type scalar_t = Coord.Scalar.t and type node_t = node_t and type key_t = key_t =
@@ -126,7 +110,7 @@ struct
     type scalar_t = Coord.Scalar.t
     let getkey        = getkey
     let area_increase = area_increase
-    let expand r1 r2  = r1#expand r2
+    let expand r1 r2  = R.expand r1 r2
   end
 
   module SplitLeaf = Split(Coord)(Cell)(Def)
@@ -136,8 +120,8 @@ struct
 
   let choose_leaf k nl =
     let least_area n1 n2 = 
-      let a = (getkey n1)#area()
-      and b = (getkey n2)#area() 
+      let a = R.area (getkey n1)
+      and b = R.area (getkey n2)
       in if a < b then -1 else if a > b then 1 else 0
     in
       sort least_area nl
@@ -146,43 +130,43 @@ struct
 
   (** insert the couple (key,value) in the tree *)
   let insert tree key value =
-  let rec insert n key value =
-    match n with
-	Leaf (k, cl) -> (
-	  let c = (key, value) 
-	  in
-	    if length cl >= Def.maximum
-	    then
-	      let (l1, r1), (l2, r2) = SplitLeaf.split (c::cl)
-	      in
-		Leaf (r1, l1), Some (Leaf (r2, l2))
-	    else
-	      Leaf (k#expand key,c::cl), None
-	)
-      | Node (k, nl) -> (
-	  match choose_leaf key nl with
-	      []   -> (
-		raise (Error "insert : choose_leaf returned []")
-	      )
-	    | h::l -> ( 
-		let cl = match insert h key value with
-		    (n1, None)    -> n1::l
-		  | (n1, Some n2) -> n1::n2::l
+    let rec insert n key value =
+      match n with
+	  Leaf (k, cl) -> (
+	    let c = (key, value) 
+	    in
+	      if length cl >= Def.maximum
+	      then
+		let (l1, r1), (l2, r2) = SplitLeaf.split (c::cl)
 		in
-		  if length cl > Def.maximum 
-		  then
-		    let (l1, r1), (l2, r2) = SplitNode.split cl
-		    in
-		      Node (r1, l1), Some (Node (r2, l2))
-		  else
-		    Node (k#expand key,cl), None
-	      )
-	)
-  in
-    match insert tree.root key value with
-	n1, None    -> tree.root <- n1
-      | n1, Some n2 -> tree.root <- Node ((getkey n1)#expand (getkey n2), [n2;n1])
-	  
+		  Leaf (r1, l1), Some (Leaf (r2, l2))
+	      else
+		Leaf (R.expand k key,c::cl), None
+	  )
+	| Node (k, nl) -> (
+	    match choose_leaf key nl with
+		[]   -> (
+		  raise (Error "insert : choose_leaf returned []")
+		)
+	      | h::l -> ( 
+		  let cl = match insert h key value with
+		      (n1, None)    -> n1::l
+		    | (n1, Some n2) -> n1::n2::l
+		  in
+		    if length cl > Def.maximum 
+		    then
+		      let (l1, r1), (l2, r2) = SplitNode.split cl
+		      in
+			Node (r1, l1), Some (Node (r2, l2))
+		    else
+		      Node (R.expand k key,cl), None
+		)
+	  )
+    in
+      match insert tree.root key value with
+	  n1, None    -> tree.root <- n1
+	| n1, Some n2 -> tree.root <- Node ((R.expand (getkey n1)) (getkey n2), [n2;n1])
+	    
 
   (** create a tree containing the couple (key,value) *) 
   let make key value = {root = Leaf (key,[(key,value)])}
@@ -214,8 +198,8 @@ struct
     let dump_link parent child =
       output_str (parent^":i"^child^" -> n_"^child^":n;\n")
     and string_of_key k = 
-      string_of_int (Oo.id k)
-     in
+      R.to_string k
+    in
     let node_label k = 
       "n_"^(string_of_key k)
     in	
@@ -250,23 +234,18 @@ struct
       dump_cell (List.hd l);
       List.iter (fun x -> output_str " | "; dump_cell x ) (List.tl l);
       output_str " \" ];\n"
-      
+	
     in
       output_str ("digraph "^filename^" {\n");
       output_str ("name = "^filename^";\n");
       output_str "node [shape=record];\n";
       dump_ "root" tree.root;
-      (*
-      (match tree.root with
-	  Leaf (k,l) -> dump_leaf k l
-	| Node (k,l) -> dump_node k l);
-      *)
       output_str "}\n";
       close_out file
 
 end
 
 (** rtrees with splitting algorithms already included *)
-module Linear = Make(Lsplit.Make)
-module Quadratic = Make(Qsplit.Make)
+module Linear = Make(Lsplit.Make)(Rbox.Make)
+module Quadratic = Make(Qsplit.Make)(Rbox.Make)
 

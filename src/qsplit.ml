@@ -20,7 +20,11 @@
 *)
 
 (** Quadratic split algorithm for RTREE *)
-module Make (Coord : Vec.T) (N : Splitnode.T with type scalar_t = Coord.Scalar.t) (Def : Rtreedef.T) : (Rtreesplit.T with type key_t = N.key_t and type node_t = N.node_t) = 
+module Make  
+  (Coord : Vec.T) 
+  (N     : Splitnode.T with type scalar_t = Coord.Scalar.t)
+  (Def   : Rtreedef.T) : 
+  (Rtreesplit.T with type key_t = N.key_t and type node_t = N.node_t) = 
 struct
 
   type key_t  = N.key_t

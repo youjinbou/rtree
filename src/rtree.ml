@@ -27,5 +27,6 @@ module Rtreesplit = Rtreesplit
 module Qsplit = Qsplit
 module Lsplit = Lsplit
 module Rtreedef = Rtreedef
+module Region = Region
 module Rbox = Rbox
 include Make
