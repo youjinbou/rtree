@@ -6,7 +6,7 @@ OCBFLAGS=${OCBFLAGS:=""}
 INSTALL_PREFIX=${INSTALL_PREFIX:=""}
 
 
-TARGET=${TARGET:=rtree}
+TARGET=${TARGET:=src/rtree}
 OCAMLBUILD=$(which ocamlbuild)
 
 INSTALL=$(which install)
@@ -14,7 +14,7 @@ CP=$(which cp)
 # let's not make backups of the files we install shan't we?
 export VERSION_CONTROL=off
 
-BUILD_PATH=_build/src
+BUILD_PATH=_build/
 
 INSTALL_LIB_DIR=${INSTALL_LIB_DIR:=$INSTALL_PREFIX$(ocamlc -where)/$TARGET}
 INSTALL_API_DIR=${INSTALL_API_DIR:=$INSTALL_PREFIX$(ocamlc -where)/$TARGET}

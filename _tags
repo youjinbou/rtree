@@ -1,8 +1,7 @@
-<src>: include
+<src/M>: include
 <tests/*.ml>: I(+sdl), I(+lablgl)
 <tests/*.{native}>: use_sdl, use_sdlloader, use_lablgl, use_labltk, use_togl, use_unix, use_bigarray, use_str
 <tests/*.{byte}>: use_sdl, use_sdlloader, use_lablgl, use_labltk, use_togl, use_unix, use_bigarray, use_str
 <tests/test_*>: use_oUnit
-
-<src/*.cmx>: for-pack(Rtree)
+<src/M/*.cmx>: for-pack(Rtree)
 

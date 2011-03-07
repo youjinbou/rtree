@@ -1,4 +1,4 @@
-version = "0.1.0"
+version = "current"
 description = "a R-tree library"
 archive(byte) = "rtree.cma"
 archive(native) = "rtree.cmxa"
