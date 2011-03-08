@@ -19,8 +19,12 @@
 
 *)
 
-(** Linear split algorithm for RTREE *)
-module Make (Coord : Vec.T) (N : Splitnode.T with type scalar_t = Coord.Scalar.t) (Def : Rtreedef.T) : (Rtreesplit.T with type key_t = N.key_t and type node_t = N.node_t) = 
+(** Linear split algorithm for Rtree *)
+module Make 
+  (Coord : Vec.T)
+  (N     : Node.T with type scalar_t = Coord.Scalar.t)
+  (Def   : Def.T) :
+  (Split.T with type key_t = N.key_t and type node_t = N.node_t) = 
 struct
 
   type key_t  = N.key_t
@@ -62,6 +66,7 @@ struct
 		)
 	)
 
+  (** algorithm entry point *)
   let split l =
     let s1, s2, ll = pickseeds l
     in

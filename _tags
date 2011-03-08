@@ -1,7 +1,10 @@
-<src/M>: include
+<src>: include
+<src/rtree.{cmo,cmx}>: I(src/M),I(src/O)
+<src/m.{cmo,cmx}>: I(src/M)
+<src/M/*.{cmo,cmx}>: I(src/M),for-pack(M)
+<src/o.{cmo,cmx}>: I(src/O)
+<src/O/*.{cmo,cmx}>: I(src/O),for-pack(O)
+<src/*.html>: i(src/M),i(src/O)
 <tests/*.ml>: I(+sdl), I(+lablgl)
-<tests/*.{native}>: use_sdl, use_sdlloader, use_lablgl, use_labltk, use_togl, use_unix, use_bigarray, use_str
-<tests/*.{byte}>: use_sdl, use_sdlloader, use_lablgl, use_labltk, use_togl, use_unix, use_bigarray, use_str
+<tests/*.{native,byte}>: use_sdl, use_sdlloader, use_lablgl, use_labltk, use_togl, use_unix, use_bigarray, use_str
 <tests/test_*>: use_oUnit
-<src/M/*.cmx>: for-pack(Rtree)
-

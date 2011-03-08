@@ -19,13 +19,18 @@
 
 *)
 
-module Debug  = Debug
-module Vec    = Vec
-module Node   = Node
-module Split  = Split
-module Qsplit = Qsplit
-module Lsplit = Lsplit
-module Def    = Def
-module Region = Region
-module Rbox   = Rbox
-include Make
+(** module signatures for scalar values *)
+
+(** minimal scalar interface needed for the library *)
+module type T =
+sig
+  type t
+  val  zero      : t
+  val  one       : t
+  val  neg       : t -> t
+  val  add       : t -> t -> t
+  val  sub       : t -> t -> t
+  val  mul       : t -> t -> t
+  val  div       : t -> t -> t
+  val  to_string : t -> string
+end

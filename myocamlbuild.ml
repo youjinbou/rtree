@@ -20,9 +20,29 @@
 open Ocamlbuild_plugin;;
 open Command;;
 
+(*
+rule "M module"
+  ~prod:"src/%.cmo"
+  ~dep:(List.map (fun x -> "src/M/"^(String.lowercase x)^".cmo") (string_list_of_file "src/m.mlpack"))
+  begin fun env build ->
+    
+  end
 
+flag ["ocaml";"compile";"native";"M"] (S [A "-I"; A "src/M"]);      
+
+*)
+	   
+
+  
 dispatch begin function
-| After_rules ->
+  | Before_rules -> begin
+      (* How do I get ocamlbuild to add certain include directories 
+	 to some intermediate build targets? I should use the _tags
+	 file, but somehow certain includes directives don't get 
+	 used.
+      *)
+    end
+  | After_rules ->
 
   let lablgl      = "+lablGL"
   and lablgl_libs =  [
@@ -71,17 +91,14 @@ dispatch begin function
   and ounit_libs  =  [ "oUnit" ]
   in
 
-    flag ["ocaml";"compile";"native";"inline"] (S [A "-inline"; A "50"]);
-    flag ["ocaml";"compile";"native";"compact"] (S [A "-compact"]);
-    flag ["ocaml";"compile";"native";"unsafe"] (S [A "-unsafe"]);
-    flag ["ocaml";"compile";"native";"asm"] (S [A "-S"]);
-
     List.iter (fun (dir, l) -> List.iter (fun x -> ocaml_lib ~extern:true ~dir x) l) [
       labltk, labltk_libs;
       lablgl, lablgl_libs;
       sdl   , sdl_libs   ;
       ounit , ounit_libs
     ]
+
+      
 
 | _ -> ()
 end;;

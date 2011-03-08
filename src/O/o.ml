@@ -19,13 +19,13 @@
 
 *)
 
-module Debug  = Debug
-module Vec    = Vec
-module Node   = Node
-module Split  = Split
+
+module Debug = Debug
+module Node = Node
+module Split = Split
 module Qsplit = Qsplit
 module Lsplit = Lsplit
-module Def    = Def
+module Def = Def
 module Region = Region
-module Rbox   = Rbox
 include Make
+

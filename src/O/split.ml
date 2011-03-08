@@ -18,15 +18,20 @@
   <http://www.gnu.org/licenses/>.
 
 *)
-(** rtree node splitting algorithm functor signature *)
-module type T =
-sig
-  type node_t
-  type key_t
-  val split : node_t list -> (node_t list * key_t) * (node_t list * key_t)
-end
 
+(** rtree node splitting algorithm functor signature *)
 module type Make = 
-  functor (Coord : Vec.T) ->
-    functor (N : Splitnode.T with type scalar_t = Coord.Scalar.t) -> 
-      functor (Def : Rtreedef.T) -> T with type node_t = N.node_t and type key_t = N.key_t
+  functor (Scalar : Scalar.T)  ->
+    functor (Def : Def.T)      -> 
+sig 
+
+  class ['node] t :
+  object 
+
+    (* constraint 'node = Scalar.t Node.node *)
+
+    method pickseeds : 'node list -> 'node * 'node
+    method split     : 'node list -> ('node list * 'key) * ('node list * 'key)
+  end
+
+end

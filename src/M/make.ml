@@ -24,10 +24,10 @@ open Debug
 (** the functor used to build a rtree handling module *)
 
 module Make = 
-  functor (Split : Rtreesplit.Make) -> 
-    functor (Region : Region.Make)  ->
-      functor (Coord: Vec.T)        -> 
-	functor (Def : Rtreedef.T)  -> 
+  functor (Split : Split.Make)       -> 
+    functor (Region : Region.Make)   ->
+      functor (Coord : Vec.T)        -> 
+	functor (Def : Def.T)        -> 
 struct
   
   open List
@@ -90,7 +90,7 @@ struct
 
   (* ------------------------------------------------------------------------------- *)
 
-  module Cell : Splitnode.T with type scalar_t = Coord.Scalar.t and type node_t = cell_t and type key_t = key_t =
+  module Cell : Node.T with type scalar_t = Coord.Scalar.t and type node_t = cell_t and type key_t = key_t =
   struct
     type node_t   = cell_t
     type k_t      = key_t (* redefine upper module type to avoid a cycle *)
@@ -101,7 +101,7 @@ struct
     let expand r1 r2  = R.expand r1 r2
   end
 
-  module Node : Splitnode.T with type scalar_t = Coord.Scalar.t and type node_t = node_t and type key_t = key_t =
+  module Node : Node.T with type scalar_t = Coord.Scalar.t and type node_t = node_t and type key_t = key_t =
   struct 
     type t        = node_t
     type node_t   = t

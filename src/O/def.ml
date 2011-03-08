@@ -19,13 +19,17 @@
 
 *)
 
-module Debug  = Debug
-module Vec    = Vec
-module Node   = Node
-module Split  = Split
-module Qsplit = Qsplit
-module Lsplit = Lsplit
-module Def    = Def
-module Region = Region
-module Rbox   = Rbox
-include Make
+(** module type for rtree configuration data *)
+module type T =
+sig
+
+  (** minimum number of elements held a node *)
+  val minimum : int
+
+  (** maximum number of elements held by a node *)
+  val maximum : int
+
+  (** datatype handled by the tree - could be 'a ? *)
+  type t
+
+end  

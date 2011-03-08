@@ -19,12 +19,12 @@
 
 *)
 
-(** Quadratic split algorithm for RTREE *)
+(** Quadratic split algorithm for Rtree *)
 module Make  
   (Coord : Vec.T) 
-  (N     : Splitnode.T with type scalar_t = Coord.Scalar.t)
-  (Def   : Rtreedef.T) : 
-  (Rtreesplit.T with type key_t = N.key_t and type node_t = N.node_t) = 
+  (N     : Node.T with type scalar_t = Coord.Scalar.t)
+  (Def   : Def.T) : 
+  (Split.T with type key_t = N.key_t and type node_t = N.node_t) = 
 struct
 
   type key_t  = N.key_t
@@ -124,7 +124,8 @@ struct
 		    else putnext (l1,r1,i1) (add l2 r2 e i2) lr
 		)
 	)
-	  
+
+  (** algorithm entry point *)	  
   let split l =
     let s1, s2 = pickseeds l
     in

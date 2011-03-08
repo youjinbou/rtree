@@ -19,13 +19,15 @@
 
 *)
 
-module Debug  = Debug
-module Vec    = Vec
-module Node   = Node
-module Split  = Split
-module Qsplit = Qsplit
-module Lsplit = Lsplit
-module Def    = Def
-module Region = Region
-module Rbox   = Rbox
-include Make
+(** rtree node splitting algorithm functor signature *)
+module type T =
+sig
+  type node_t
+  type key_t
+  val split : node_t list -> (node_t list * key_t) * (node_t list * key_t)
+end
+
+module type Make = 
+  functor (Coord : Vec.T) ->
+    functor (N : Node.T with type scalar_t = Coord.Scalar.t) -> 
+      functor (Def : Def.T) -> T with type node_t = N.node_t and type key_t = N.key_t

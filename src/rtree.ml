@@ -19,13 +19,38 @@
 
 *)
 
-module Debug  = Debug
-module Vec    = Vec
-module Node   = Node
-module Split  = Split
-module Qsplit = Qsplit
-module Lsplit = Lsplit
-module Def    = Def
-module Region = Region
-module Rbox   = Rbox
-include Make
+module M = M
+module O = O
+
+
+(*
+module M =
+struct
+  
+  module Debug  = M.Debug
+  module Vec    = M.Vec
+  module Node   = M.Node
+  module Split  = M.Split
+  module Qsplit = M.Qsplit
+  module Lsplit = M.Lsplit 
+  module Def    = M.Def
+  module Region = M.Region
+  module Rbox   = M.Rbox
+  include M.Make
+
+end
+
+module O =
+struct
+  
+  module Debug     = O.Debug
+  module Node      = O.Node
+  module Split     = O.Split
+  module Qsplit    = O.Qsplit
+  module Lsplit    = O.Lsplit
+  module Def       = O.Def
+  module Region    = O.Region
+  include O.Make
+
+end
+*)

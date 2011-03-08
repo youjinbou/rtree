@@ -19,13 +19,14 @@
 
 *)
 
-module Debug  = Debug
-module Vec    = Vec
-module Node   = Node
-module Split  = Split
-module Qsplit = Qsplit
-module Lsplit = Lsplit
-module Def    = Def
-module Region = Region
-module Rbox   = Rbox
-include Make
+(** the region class full type *)
+class type ['scalar] region =
+object
+  
+  method expand    : 'scalar region -> 'scalar region
+  method area      : 'scalar
+  method area_with : 'scalar region -> 'scalar
+  method area_increase : 'scalar region -> 'scalar
+  method to_string : 'scalar region -> string
+
+end

@@ -18,14 +18,13 @@
   <http://www.gnu.org/licenses/>.
 
 *)
+open Region
 
-module Debug  = Debug
-module Vec    = Vec
-module Node   = Node
-module Split  = Split
-module Qsplit = Qsplit
-module Lsplit = Lsplit
-module Def    = Def
-module Region = Region
-module Rbox   = Rbox
-include Make
+(** rtree node class signature used by the splitting functor *)
+class type ['scalar] node =
+object
+  method key    : ('scalar) region
+end
+  
+
+
