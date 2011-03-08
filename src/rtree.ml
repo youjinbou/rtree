@@ -19,11 +19,12 @@
 
 *)
 
+(*
 module M = M
 module O = O
+*)
 
-
-(*
+(* I need to have the Make module included *)
 module M =
 struct
   
@@ -53,4 +54,4 @@ struct
   include O.Make
 
 end
-*)
+
