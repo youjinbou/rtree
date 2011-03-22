@@ -28,6 +28,10 @@ open GlPix
 
 open Common
 
+open Rtree
+
+module Debug = M.Debug
+
 (* always useful *)
 let pi = acos (-.1.)
 
@@ -87,14 +91,14 @@ object(self)
 
 end
 
-module Rtree3Def : Rtree.Rtreedef.T with type t = box3d =
+module Rtree3Def : M.Def.T with type t = box3d =
 struct 
   let minimum = 8
   let maximum = 16
   type t = box3d
 end
 
-module Rtree3 = Rtree.Make(Rtree.Lsplit.Make)(Rbox3d.Make)(FVec3)(Rtree3Def)
+module Rtree3 = M.Make(M.Lsplit.Make)(Rbox3d.Make)(FVec3)(Rtree3Def)
 
 module Glv =
 struct
@@ -129,7 +133,7 @@ object (self)
     let fname = "rtree" 
     and fdir  = "dots" in 
     let range = 100.0 in
-    let maxv = [| range ; range ; range |] in
+(*    let maxv = [| range ; range ; range |] in *)
     let origb = [| -1.0; -1.0 ; -1.0 |]
     and origt = [| 1.0 ; 1.0 ; 1.0 |] in 
     let r = Rtree3.make (new Rb.c origb origt) (new box3d_gllist origb origt) 
@@ -156,7 +160,7 @@ object (self)
 	  addup (succ i) m
       else ()
     in
-      addup 0 2000; 
+      addup 0 2000;
       Rtree3.dump r fname fdir;
       r
 

@@ -17,8 +17,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 *)
-open Primitives
-open Debug
 
 module FVec3 = Vec3.Make(Primitives.Float)
 

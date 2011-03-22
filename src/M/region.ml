@@ -38,9 +38,9 @@ sig
 
 end
 
-(** the functor required by the library to set up from the Coordinate 
-    system (also required - see Vec) a module of signature defined 
-    above.
+(** the functor required by the library to set up a module of 
+    signature defined above using the Coordinate system 
+    (also required - see Vec).
 *)
 module type Make =
   functor (Coord: Vec.T) -> T with type scalar_t = Coord.Scalar.t and type key_t = Coord.t

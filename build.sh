@@ -6,7 +6,7 @@ OCBFLAGS=${OCBFLAGS:="-classic-display"}
 INSTALL_PREFIX=${INSTALL_PREFIX:=""}
 
 PROJECTNAME=${PROJECTNAME:=rtree}
-TARGET=${TARGET:=src/$PROJECTNAME}
+TARGET=${TARGET:=$PROJECTNAME}
 OCAMLBUILD=$(which ocamlbuild)
 
 INSTALL=$(which install)
@@ -14,7 +14,7 @@ CP=$(which cp)
 # let's not make backups of the files we install shan't we?
 export VERSION_CONTROL=off
 
-BUILD_PATH=_build/
+BUILD_PATH=_build/src
 
 INSTALL_LIB_DIR=${INSTALL_LIB_DIR:=$INSTALL_PREFIX$(ocamlc -where)/$PROJECTNAME}
 INSTALL_API_DIR=${INSTALL_API_DIR:=$INSTALL_PREFIX$(ocamlc -where)/$PROJECTNAME}
@@ -26,34 +26,45 @@ ocb () { $OCAMLBUILD $EXTRAFLAGS $* ; }
 rule () {
     case $1 in
 	clean)  
-	    ocb -clean ;;
+	    ocb -clean 
+	    ;;
 	native) 
-	    ocb $TARGET.cmxa ;;
+	    ocb $TARGET.cmxa 
+	    ;;
 	byte)    
-	    ocb $TARGET.cma ;;
+	    ocb $TARGET.cma 
+	    ;;
 	all)
-	    ocb $TARGET.cmxa $TARGET.cma $TARGET.docdir/index.html ;;
-	install-bin) 
-	    LIB_FILES=("$BUILD_PATH/$TARGET.cmxa" "$BUILD_PATH/$TARGET.cma" "src/META")
-	    $INSTALL -d $INSTALL_LIB_DIR 
-	    $INSTALL -D ${LIB_FILES[@]} $INSTALL_LIB_DIR ;;
+	    ocb $TARGET.cmxa
+	    ocb $TARGET.cma
+	    ocb $TARGET.docdir/index.html 
+	    ;;
+	install-bin)
+	    OBJ_FILES=("$BUILD_PATH/o.cmo" "$BUILD_PATH/m.cmo")
+	    LIB_FILES=("$BUILD_PATH/$TARGET.cmxa" "$BUILD_PATH/$TARGET.a" "$BUILD_PATH/$TARGET.cma" "src/META")
+	    $INSTALL -d $INSTALL_LIB_DIR
+	    $INSTALL -D ${LIB_FILES[@]} ${OBJ_FILES[@]} $INSTALL_LIB_DIR 
+	    ;;
 	install-api)
-	    API_FILES=("$BUILD_PATH/$TARGET.cmi")
+	    API_FILES=("$BUILD_PATH/$TARGET.cmi" "$BUILD_PATH/m.cmi" "$BUILD_PATH/o.cmi")
 	    $INSTALL -d $INSTALL_API_DIR 
-	    $INSTALL -D ${API_FILES[@]} $INSTALL_API_DIR ;;
+	    $INSTALL -D ${API_FILES[@]} $INSTALL_API_DIR 
+	    ;;
 	install-doc)
 	    DOC_FILES="$TARGET.docdir"
 	    $INSTALL -d $INSTALL_DOC_DIR
-	    $CP -a -L ${DOC_FILES[@]} $INSTALL_DOC_DIR ;;
+	    $CP -a -L ${DOC_FILES[@]} $INSTALL_DOC_DIR 
+	    ;;
 	*)      
-	    echo "Unknown action $1" ;;
-   esac;
+	    echo "Unknown action $1" 
+	    ;;
+    esac;
 }
 if [ $# -eq 0 ]; then
-   rule all
+    rule all
 else
-   while [ $# -gt 0 ]; do
-     rule $1;
-     shift
-   done
+    while [ $# -gt 0 ]; do
+	rule $1;
+	shift
+    done
 fi

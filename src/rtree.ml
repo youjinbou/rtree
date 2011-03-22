@@ -19,23 +19,18 @@
 
 *)
 
-(*
-module M = M
-module O = O
-*)
-
 (* I need to have the Make module included *)
 module M =
 struct
   
   module Debug  = M.Debug
   module Vec    = M.Vec
+  module Def    = M.Def
+  module Region = M.Region
   module Node   = M.Node
   module Split  = M.Split
   module Qsplit = M.Qsplit
   module Lsplit = M.Lsplit 
-  module Def    = M.Def
-  module Region = M.Region
   module Rbox   = M.Rbox
   include M.Make
 
@@ -45,12 +40,13 @@ module O =
 struct
   
   module Debug     = O.Debug
+  module Scalar    = O.Scalar
   module Node      = O.Node
   module Split     = O.Split
-  module Qsplit    = O.Qsplit
-  module Lsplit    = O.Lsplit
   module Def       = O.Def
   module Region    = O.Region
+  module Qsplit    = O.Qsplit
+  module Lsplit    = O.Lsplit
   include O.Make
 
 end

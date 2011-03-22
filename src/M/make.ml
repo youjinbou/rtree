@@ -68,7 +68,7 @@ struct
       Leaf of key_t * cell_t list
     | Node of key_t * node_t list
 
-  type t = { mutable root : node_t }
+  type t = { mutable root : node_t option }
 
   let getkey node = match node with
       Leaf (k, _) -> k
@@ -86,7 +86,9 @@ struct
 	    then fold_left (fun l nn -> append (filter nn f) l) [] nl
 	    else []
     in
-      filter tree.root f
+      match tree.root with
+	  None      -> []
+	| Some tree -> filter tree f
 
   (* ------------------------------------------------------------------------------- *)
 
@@ -128,6 +130,12 @@ struct
 
   (* ------------------------------------------------------------------------------- *)
 
+  (** create an empty tree *)
+  let empty = {root = None}
+
+  (** create a tree containing the couple (key,value) *) 
+  let make key value = {root = Some (Leaf (key,[(key,value)]))}
+
   (** insert the couple (key,value) in the tree *)
   let insert tree key value =
     let rec insert n key value =
@@ -163,13 +171,13 @@ struct
 		)
 	  )
     in
-      match insert tree.root key value with
-	  n1, None    -> tree.root <- n1
-	| n1, Some n2 -> tree.root <- Node ((R.expand (getkey n1)) (getkey n2), [n2;n1])
+      match tree.root with 
+	  None      -> tree.root <- Some (Leaf (key,[(key,value)]))
+	| Some root ->
+	    match insert root key value with
+		n1, None    -> tree.root <- Some n1
+	      | n1, Some n2 -> tree.root <- Some (Node ((R.expand (getkey n1)) (getkey n2), [n2;n1]))
 	    
-
-  (** create a tree containing the couple (key,value) *) 
-  let make key value = {root = Leaf (key,[(key,value)])}
 
   (* ------------------------------------------------------------------------------- *)
 
@@ -184,9 +192,10 @@ struct
       match l with 
 	  []   -> ()
 	| n::t -> (iter_node n; iter_list t)
-	    
     in
-      iter_node tree.root
+      match tree.root with
+	  None      -> () 
+	| Some root -> iter_node root
 
   (* ------------------------------------------------------------------------------- *)
 
@@ -239,7 +248,10 @@ struct
       output_str ("digraph "^filename^" {\n");
       output_str ("name = "^filename^";\n");
       output_str "node [shape=record];\n";
-      dump_ "root" tree.root;
+      (match tree.root with 
+	  None       -> ()
+	| Some root  ->
+	    dump_ "root" root);
       output_str "}\n";
       close_out file
 

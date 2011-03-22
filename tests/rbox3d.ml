@@ -1,7 +1,7 @@
 open Rtree
 (* module implementing Region.T *)
 module Make =
-  functor (Coord : Vec.T) ->
+  functor (Coord : M.Vec.T) ->
 struct
 
   class c (p1 : Coord.t) (p2 : Coord.t) = 

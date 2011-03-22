@@ -1,0 +1,3 @@
+<test_rtree.{native,byte}>: use_rtree, use_sdl, use_sdlloader, use_lablgl, use_labltk, use_togl, use_unix, use_bigarray, use_str
+<*.ml>: use_rtree, use_sdl, use_sdlloader, use_lablgl, use_labltk, use_togl, use_unix, use_bigarray, use_str
+<test_*>: use_rtree, use_oUnit
