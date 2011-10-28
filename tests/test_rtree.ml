@@ -257,7 +257,6 @@ object (self)
 
   val mutable visible = []
 
-
   (* moving bitfield *)
   val move_rotate    = 0x01
   val move_z         = 0x02

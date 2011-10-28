@@ -11,7 +11,6 @@ OCAMLBUILD=$(which ocamlbuild)
 
 INSTALL=$(which install)
 CP=$(which cp)
-# let's not make backups of the files we install shan't we?
 export VERSION_CONTROL=off
 
 BUILD_PATH=_build/src

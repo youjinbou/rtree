@@ -20,7 +20,7 @@ Section: libdevel
 Architecture: all
 Depends: librtree-ocaml
 Tag: devel::lang:ocaml, devel::library, implemented-in::ocaml, role::devel-lib
-Description: Applicative events and signals for OCaml
+Description: Rree library for OCaml, development files
  A Rtree is a tree algorithmic structure used to efficiently partition 
  objects over multiple criteria. One may find or select objects from a 
  list by constructing such a tree, and querying it.

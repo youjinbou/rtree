@@ -6,6 +6,6 @@
 <src/O/*.{cmo,cmx}>      : I(src/O),for-pack(O)
 <src/*.html>             : i(src/M),i(src/O)
 <tests/test_rtree.{native,byte}>: use_rtree, use_sdl, use_sdlloader, use_lablgl, use_labltk, use_togl, use_unix, use_bigarray, use_str
-<tests/*.ml>: use_rtree, use_sdl, use_sdlloader, use_lablgl, use_labltk, use_togl, use_unix, use_bigarray, use_str
-<tests/test_*>: use_rtree, use_oUnit
+<tests/*.ml>             : use_rtree, use_sdl, use_sdlloader, use_lablgl, use_labltk, use_togl, use_unix, use_bigarray, use_str
+<tests/test_*>           : use_rtree, use_oUnit
 
