@@ -128,7 +128,7 @@ object(self)
     in
       check_plane (b,t)
 
-  method includes (rb : rbox_t) = 
+  method contains (rb : rbox_t) = 
     (self#inside rb#bottom) && (self#inside rb#top)
 
   method draw () = 
@@ -156,7 +156,9 @@ object(self)
   method to_string = "view volume"
   
   initializer (
-    prerr_string "new view_volume"; prerr_newline (); flush stderr
+    (*
+    prerr_endline "new view_volume"; flush stderr
+    *)
   )
       
 end

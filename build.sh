@@ -39,13 +39,13 @@ rule () {
 	    ocb $TARGET.docdir/index.html 
 	    ;;
 	install-bin)
-	    OBJ_FILES=("$BUILD_PATH/o.cmo" "$BUILD_PATH/m.cmo")
+	    #OBJ_FILES=("$BUILD_PATH/o.cmo" "$BUILD_PATH/m.cmo")
 	    LIB_FILES=("$BUILD_PATH/$TARGET.cmxa" "$BUILD_PATH/$TARGET.a" "$BUILD_PATH/$TARGET.cma" "src/META")
 	    $INSTALL -d $INSTALL_LIB_DIR
-	    $INSTALL -D ${LIB_FILES[@]} ${OBJ_FILES[@]} $INSTALL_LIB_DIR 
+	    $INSTALL -D ${LIB_FILES[@]} $INSTALL_LIB_DIR 
 	    ;;
 	install-api)
-	    API_FILES=("$BUILD_PATH/$TARGET.cmi" "$BUILD_PATH/m.cmi" "$BUILD_PATH/o.cmi")
+	    API_FILES=("$BUILD_PATH/$TARGET.cmi")
 	    $INSTALL -d $INSTALL_API_DIR 
 	    $INSTALL -D ${API_FILES[@]} $INSTALL_API_DIR 
 	    ;;

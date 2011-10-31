@@ -1,7 +1,7 @@
 open Rtree
-(* module implementing Region.T *)
+(* module implementing region *)
 module Make =
-  functor (Coord : M.Vec.T) ->
+  functor (Coord : Sig.M.VEC) ->
 struct
 
   class c (p1 : Coord.t) (p2 : Coord.t) = 
@@ -53,7 +53,7 @@ struct
 	check_seg (pred Coord.size)
 
     (* whether the rbox rb fits in self *)
-    method includes (rb : c) =
+    method contains (rb : c) =
       let segment_include s1 s2 e1 e2 =
 	(s1 <= s2) && (e2 <= e1)
       in
@@ -73,8 +73,13 @@ struct
 	  in
 	    (segment_include s1 s2 e1 e2) && check_seg (pred i)
       in
-	check_seg (pred Coord.size)
-	  
+      let res = check_seg (pred Coord.size) in
+(*
+      Printf.printf "comparing self : %s rb: %s => %b\n"  self#to_string rb#to_string res;
+      flush stdout;
+*)
+      res
+
     method area = area_
 
     (*
@@ -94,15 +99,21 @@ struct
     (* create new rbox covering self and the rbox rb *)
     method expand (rb : c) =
       let bottom = Coord.map2 min rb#bottom b_
-      and top    = Coord.map2 max rb#top t_
-      in
-	new c bottom top
+      and top    = Coord.map2 max rb#top t_ in
+      new c bottom top
 	  
     method area_with (rb : c) = 
       (self#expand rb)#area 
 
-    method to_string = string_of_int (Oo.id self)
-      
+(*
+    method to_string = 
+      let string_of_coord v x = Coord.Scalar.to_string (Coord.get v x) in
+      let to_tuple c = string_of_coord c 0,string_of_coord c 1,string_of_coord c 2 in
+      let x1,y1,z1 = to_tuple b_
+      and x2,y2,z2 = to_tuple t_ in
+      Printf.sprintf "%d  <%s ; %s ; %s> <%s ; %s ; %s>" (Oo.id self) x1 y1 z1 x2 y2 z2
+*)
+
   end
 
   type t = c
@@ -122,7 +133,7 @@ struct
   let area v      = v#area
   let area_with v = v#area_with
   let overlaps v  = v#overlaps
-  let includes v  = v#includes
-  let to_string v = v#to_string
+  let contains v  = v#contains
+(*  let to_string v = v#to_string *)
 
 end

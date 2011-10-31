@@ -30,8 +30,6 @@ open Common
 
 open Rtree
 
-module Debug = M.Debug
-
 (* always useful *)
 let pi = acos (-.1.)
 
@@ -40,32 +38,40 @@ object(self)
 
   inherit Rb.c b t as super
 
+  val mutable tag = false
+
+  method toggle () =
+    tag <- not tag
+
+  method tagged = tag
+
   method draw () =
     let xb, yb, zb = FVec3.to_tuple self#bottom
-    and xt, yt, zt = FVec3.to_tuple self#top
-    in
-      GlDraw.begins `quad_strip;
-      GlDraw.vertex ~x:xt ~y:yt ~z:zb ();
-      GlDraw.vertex ~x:xt ~y:yb ~z:zb ();
-      GlDraw.vertex ~x:xb ~y:yt ~z:zb ();
-      GlDraw.vertex ~x:xb ~y:yb ~z:zb ();
-      GlDraw.vertex ~x:xb ~y:yt ~z:zt ();
-      GlDraw.vertex ~x:xb ~y:yb ~z:zt ();
-      GlDraw.vertex ~x:xt ~y:yt ~z:zt ();
-      GlDraw.vertex ~x:xt ~y:yb ~z:zt ();
-      GlDraw.ends ();
-      GlDraw.begins `quad_strip;
-      GlDraw.vertex ~x:xb ~y:yt ~z:zb ();
-      GlDraw.vertex ~x:xb ~y:yt ~z:zt ();
-      GlDraw.vertex ~x:xt ~y:yt ~z:zb ();
-      GlDraw.vertex ~x:xt ~y:yt ~z:zt ();
-      GlDraw.vertex ~x:xt ~y:yb ~z:zb ();
-      GlDraw.vertex ~x:xt ~y:yb ~z:zt ();
-      GlDraw.vertex ~x:xb ~y:yb ~z:zb ();
-      GlDraw.vertex ~x:xb ~y:yb ~z:zt ();
-      GlDraw.ends ()
+    and xt, yt, zt = FVec3.to_tuple self#top in
+    GlDraw.begins `quad_strip;
+    GlDraw.vertex ~x:xt ~y:yt ~z:zb ();
+    GlDraw.vertex ~x:xt ~y:yb ~z:zb ();
+    GlDraw.vertex ~x:xb ~y:yt ~z:zb ();
+    GlDraw.vertex ~x:xb ~y:yb ~z:zb ();
+    GlDraw.vertex ~x:xb ~y:yt ~z:zt ();
+    GlDraw.vertex ~x:xb ~y:yb ~z:zt ();
+    GlDraw.vertex ~x:xt ~y:yt ~z:zt ();
+    GlDraw.vertex ~x:xt ~y:yb ~z:zt ();
+    GlDraw.ends ();
+    GlDraw.begins `quad_strip;
+    GlDraw.vertex ~x:xb ~y:yt ~z:zb ();
+    GlDraw.vertex ~x:xb ~y:yt ~z:zt ();
+    GlDraw.vertex ~x:xt ~y:yt ~z:zb ();
+    GlDraw.vertex ~x:xt ~y:yt ~z:zt ();
+    GlDraw.vertex ~x:xt ~y:yb ~z:zb ();
+    GlDraw.vertex ~x:xt ~y:yb ~z:zt ();
+    GlDraw.vertex ~x:xb ~y:yb ~z:zb ();
+    GlDraw.vertex ~x:xb ~y:yb ~z:zt ();
+    GlDraw.ends ()
 
 end  
+
+(* ---------------------------------------------------------------------------- *)
 
 class box3d_gllist b t =
 object(self)
@@ -91,14 +97,16 @@ object(self)
 
 end
 
-module Rtree3Def : M.Def.T with type t = box3d =
+(* ---------------------------------------------------------------------------- *)
+
+module Rtree3Def : Sig.M.DEF with type t = box3d =
 struct 
-  let minimum = 8
-  let maximum = 16
+  let minimum = 2
+  let maximum = 4
   type t = box3d
 end
 
-module Rtree3 = M.Make(M.Lsplit.Make)(Rbox3d.Make)(FVec3)(Rtree3Def)
+module Rtree3 = M.Make(M.Lsplit)(Rbox3d.Make)(FVec3)(Rtree3Def)
 
 module Glv =
 struct
@@ -120,49 +128,40 @@ struct
 
 end
 
-
 (* ---------------------------------------------------------------------------------*)
 
-class view screen = 
+class view screen box_count = 
+  let make_box ?(sfact = 1.0) i =
+    let c = FVec3.of_tuple ((float (i / 100)) *. 3.0 +. 0.5, 
+			    (float ((i / 10) mod 10)) *. 3.0 +. 0.5, 
+			    (float (i mod 10)) *. 3.0 +. 0.5) in
+    let b = FVec3.map (fun x -> x -. sfact *. 0.5) c 
+    and t = FVec3.map (fun x -> x +. sfact *. 0.5) c in
+    let r = new box3d_gllist b t in
+(*    prerr_endline r#to_string; flush stderr; *) r 
+  in
 object (self)
 
   val width  = 800
   val height = 600
 
   val rtree = 
-    let fname = "rtree" 
-    and fdir  = "dots" in 
-    let range = 100.0 in
-(*    let maxv = [| range ; range ; range |] in *)
-    let origb = [| -1.0; -1.0 ; -1.0 |]
-    and origt = [| 1.0 ; 1.0 ; 1.0 |] in 
-    let r = Rtree3.make (new Rb.c origb origt) (new box3d_gllist origb origt) 
-(*
-    let startb = [| -100.0; -10.0; 35.0 |]
-    and startt = [| -98.0; -12.0; 37.0 |] in
-    let r = Rtree3.make (new Rtree3.Rbox.t startb startt) (new box3d_gllist startb startt)
-*)
-    in
-    let sfact = 3.0 in
+    let to_string o = string_of_int (Oo.id o) in
+    let r = Rtree3.empty in
     let rec addup i m =
-(*      Rtree3.dump r (fname^"_"^(Printf.sprintf "%03d" i)) fdir;  *)
       if i < m 
       then 
-	(*
-	  let b = (FVec3.random maxv)
-	  and t = (FVec3.random maxv)
-	*)
-	let b = FVec3.of_tuple ((float)(i / 100) *. sfact, (float)((i / 10) mod 10) *. sfact, (float)(i mod 10) *. sfact)
-	in
-	let t = FVec3.map (fun x -> x +. 1.0) b 
-	in
-	  Rtree3.insert r (new Rb.c b t) (new box3d_gllist b t);
-	  addup (succ i) m
+	let b = make_box i in
+	Rtree3.insert r (b :> Rb.c) b;
+	addup (succ i) m
       else ()
     in
-      addup 0 2000;
-      Rtree3.dump r fname fdir;
-      r
+      addup 0 box_count;
+    let fname = "rtree" 
+    and fdir  = "dots" in 
+    Rtree3.dump to_string r fname fdir;
+(*    Rtree3.iter r (fun k -> prerr_endline k#to_string) (fun k _ -> prerr_endline k#to_string);  *)
+    r
 
   val mutable frustum_min = [| 0. ; 0. ; 0. |]
   val mutable frustum_max = [| 0. ; 0. ; 0. |]
@@ -252,8 +251,16 @@ object (self)
     Gl.enable (`cull_face);
 
   method draw_box k b =
-    GlDraw.color (0.0,0.0,1.0);
-    b#draw ()
+    if b#tagged then (
+      GlDraw.polygon_mode `both `fill;
+      GlDraw.color (1.0,0.0,0.0);
+      b#draw ();
+      GlDraw.polygon_mode `both `line
+    ) else (
+      GlDraw.color (0.0,0.0,1.0);
+      b#draw ();
+    )
+      
 
   val mutable visible = []
 
@@ -266,6 +273,26 @@ object (self)
 
   val mutable full_draw = false
 
+  (* box tagging --------------------------- *)
+
+  val mutable counter = 0
+
+  method private toggle () = 
+    try
+      let b = make_box ~sfact:0.5 counter in
+      let target = Rtree3.find rtree (b :> Rb.c) in
+      List.iter (fun x -> x#toggle ()) target
+    with Not_found -> prerr_endline ("box "^string_of_int counter^" not found")
+
+  method toggle_next () =
+    self#toggle ();
+    counter <- (succ counter) mod box_count;
+    self#toggle ()
+
+  method toggle_prev () =
+    self#toggle ();
+    counter <- (pred counter + box_count) mod box_count;
+    self#toggle ()
 
   method init_visible () = 
     (* let vpos = FVec3.map2 (fun x y -> -. (x -. (3. *. y))) pos vdir.(2) in *)
@@ -449,6 +476,8 @@ object (self)
 	    | KEY_PAGEUP   | KEY_t       -> move 1 (-.speed_fact) move_z
 	    | KEY_PAGEDOWN | KEY_g       -> move 1 speed_fact move_z
 	    | KEY_q       -> full_draw <- true
+	    | KEY_n       -> self#toggle_next ()
+	    | KEY_p       -> self#toggle_prev ()
 	    | KEY_SPACE   -> Debug.fvec "pos: " pos; Debug.fvec "rot: " view_rot;  Debug.fvec "frustum_min : " frustum_min; Debug.fvec "frustum_max : " frustum_max ; Debug.float "scale :" view_scale
 	    | _           -> ()
 
@@ -465,7 +494,7 @@ object (self)
 	    | MOUSEBUTTONDOWN   m
 	    | MOUSEBUTTONUP     m -> self#mouse ~btn:m.mbe_button ~state:m.mbe_state ~xmcoord:m.mbe_x ~ymcoord:m.mbe_y
 	    | MOUSEMOTION       m -> self#motion m.mme_x m.mme_y
-	    | _                   -> prerr_string "unhandled event";prerr_newline (); flush stderr
+	    | _                   -> (* prerr_string "unhandled event";prerr_newline (); flush stderr *) ()
 	); check_events ()
     in
       check_events ()
@@ -495,6 +524,7 @@ object (self)
     self#projection_setup ();
     self#view_setup ();
     self#init_visible ();
+    self#toggle ()
   )
 
 end
@@ -545,7 +575,7 @@ let main () =
       List.iter print_attr (Sdlgl.get_attr ());
       Sdlwm.set_caption s s;
       init_draw ();
-      let view = new view screen
+      let view = new view screen 2000
       in
 	view#reshape ();
 	while true do
